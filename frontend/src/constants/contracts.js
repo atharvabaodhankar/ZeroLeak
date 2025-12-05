@@ -1,4 +1,4 @@
-export const EXAM_REGISTRY_ADDRESS = "0xa577F1767cCf9e209684d8ced928e26120bb0293";
+export const EXAM_REGISTRY_ADDRESS = "0x861Dd603C4202dA59856F1eeE7c3BCa41d9eD727";
 
 export const EXAM_REGISTRY_ABI = [
   {
@@ -7,36 +7,17 @@ export const EXAM_REGISTRY_ABI = [
       {
         "indexed": true,
         "internalType": "address",
-        "name": "authority",
+        "name": "examCenter",
         "type": "address"
       },
       {
         "indexed": false,
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
       }
     ],
-    "name": "AuthorityRegistered",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "centerAddress",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      }
-    ],
-    "name": "CenterRegistered",
+    "name": "ExamCenterRegistered",
     "type": "event"
   },
   {
@@ -53,6 +34,12 @@ export const EXAM_REGISTRY_ABI = [
         "internalType": "uint256",
         "name": "unlockTimestamp",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "roomNumber",
+        "type": "string"
       },
       {
         "indexed": true,
@@ -72,6 +59,12 @@ export const EXAM_REGISTRY_ABI = [
         "internalType": "uint256",
         "name": "paperId",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "roomNumber",
+        "type": "string"
       },
       {
         "indexed": false,
@@ -103,6 +96,12 @@ export const EXAM_REGISTRY_ABI = [
         "internalType": "address",
         "name": "teacher",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
       }
     ],
     "name": "PaperUploaded",
@@ -116,139 +115,7 @@ export const EXAM_REGISTRY_ABI = [
         "type": "address"
       }
     ],
-    "name": "authorities",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "bool",
-        "name": "isRegistered",
-        "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "isActive",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "authorityAddresses",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "centerAddresses",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "centers",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "bytes",
-        "name": "publicKey",
-        "type": "bytes"
-      },
-      {
-        "internalType": "bool",
-        "name": "isRegistered",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getAllAuthorities",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "",
-        "type": "address[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "",
-        "type": "string[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getAllCenters",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "",
-        "type": "address[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "",
-        "type": "string[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_center",
-        "type": "address"
-      }
-    ],
-    "name": "getCenterPublicKey",
+    "name": "examCenterPublicKeys",
     "outputs": [
       {
         "internalType": "bytes",
@@ -262,17 +129,17 @@ export const EXAM_REGISTRY_ABI = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "_paperId",
-        "type": "uint256"
+        "internalType": "address",
+        "name": "_examCenter",
+        "type": "address"
       }
     ],
-    "name": "getMyClassroom",
+    "name": "getExamCenterPublicKey",
     "outputs": [
       {
-        "internalType": "string",
+        "internalType": "bytes",
         "name": "",
-        "type": "string"
+        "type": "bytes"
       }
     ],
     "stateMutability": "view",
@@ -311,6 +178,11 @@ export const EXAM_REGISTRY_ABI = [
             "type": "string[]"
           },
           {
+            "internalType": "bytes",
+            "name": "encryptedKey",
+            "type": "bytes"
+          },
+          {
             "internalType": "uint256",
             "name": "uploadTimestamp",
             "type": "uint256"
@@ -319,6 +191,11 @@ export const EXAM_REGISTRY_ABI = [
             "internalType": "uint256",
             "name": "unlockTimestamp",
             "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "roomNumber",
+            "type": "string"
           },
           {
             "internalType": "bool",
@@ -334,16 +211,6 @@ export const EXAM_REGISTRY_ABI = [
             "internalType": "address",
             "name": "authority",
             "type": "address"
-          },
-          {
-            "internalType": "bytes",
-            "name": "timeLockedKey",
-            "type": "bytes"
-          },
-          {
-            "internalType": "string",
-            "name": "keyDerivationSalt",
-            "type": "string"
           }
         ],
         "internalType": "struct ExamRegistry.Paper",
@@ -362,17 +229,12 @@ export const EXAM_REGISTRY_ABI = [
         "type": "uint256"
       }
     ],
-    "name": "getTimeLockedKey",
+    "name": "getPaperCIDs",
     "outputs": [
       {
-        "internalType": "bytes",
+        "internalType": "string[]",
         "name": "",
-        "type": "bytes"
-      },
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
+        "type": "string[]"
       }
     ],
     "stateMutability": "view",
@@ -384,67 +246,14 @@ export const EXAM_REGISTRY_ABI = [
         "internalType": "uint256",
         "name": "_paperId",
         "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "_center",
-        "type": "address"
       }
     ],
-    "name": "isAssignedToCenter",
+    "name": "isPaperUnlocked",
     "outputs": [
       {
         "internalType": "bool",
         "name": "",
         "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "paperAssignments",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "paperClassrooms",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -489,6 +298,11 @@ export const EXAM_REGISTRY_ABI = [
         "type": "address"
       },
       {
+        "internalType": "bytes",
+        "name": "encryptedKey",
+        "type": "bytes"
+      },
+      {
         "internalType": "uint256",
         "name": "uploadTimestamp",
         "type": "uint256"
@@ -497,6 +311,11 @@ export const EXAM_REGISTRY_ABI = [
         "internalType": "uint256",
         "name": "unlockTimestamp",
         "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "roomNumber",
+        "type": "string"
       },
       {
         "internalType": "bool",
@@ -512,16 +331,6 @@ export const EXAM_REGISTRY_ABI = [
         "internalType": "address",
         "name": "authority",
         "type": "address"
-      },
-      {
-        "internalType": "bytes",
-        "name": "timeLockedKey",
-        "type": "bytes"
-      },
-      {
-        "internalType": "string",
-        "name": "keyDerivationSalt",
-        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -529,24 +338,6 @@ export const EXAM_REGISTRY_ABI = [
   },
   {
     "inputs": [
-      {
-        "internalType": "string",
-        "name": "_name",
-        "type": "string"
-      }
-    ],
-    "name": "registerAuthority",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_name",
-        "type": "string"
-      },
       {
         "internalType": "bytes",
         "name": "_publicKey",
@@ -571,23 +362,8 @@ export const EXAM_REGISTRY_ABI = [
         "type": "uint256"
       },
       {
-        "internalType": "address[]",
-        "name": "_centers",
-        "type": "address[]"
-      },
-      {
-        "internalType": "string[]",
-        "name": "_classrooms",
-        "type": "string[]"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_newTimeLockedKey",
-        "type": "bytes"
-      },
-      {
         "internalType": "string",
-        "name": "_newSalt",
+        "name": "_roomNumber",
         "type": "string"
       }
     ],
@@ -628,13 +404,8 @@ export const EXAM_REGISTRY_ABI = [
       },
       {
         "internalType": "bytes",
-        "name": "_timeLockedKey",
+        "name": "_encryptedKey",
         "type": "bytes"
-      },
-      {
-        "internalType": "string",
-        "name": "_keyDerivationSalt",
-        "type": "string"
       }
     ],
     "name": "uploadPaper",

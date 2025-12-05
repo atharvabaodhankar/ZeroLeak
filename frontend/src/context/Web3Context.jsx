@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { ethers } from 'ethers';
+import { EXAM_REGISTRY_ADDRESS, EXAM_REGISTRY_ABI } from '../constants/contracts';
 
 const Web3Context = createContext();
 
@@ -17,6 +18,7 @@ export const Web3Provider = ({ children }) => {
   const [provider, setProvider] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [contract, setContract] = useState(null);
 
   const SEPOLIA_CHAIN_ID = '0xaa36a7'; // 11155111 in hex
 
@@ -43,6 +45,15 @@ export const Web3Provider = ({ children }) => {
       setChainId(`0x${network.chainId.toString(16)}`);
       setIsConnected(true);
 
+      // Initialize contract
+      const signer = provider.getSigner();
+      const contractInstance = new ethers.Contract(
+        EXAM_REGISTRY_ADDRESS,
+        EXAM_REGISTRY_ABI,
+        signer
+      );
+      setContract(contractInstance);
+
       // Auto-switch to Sepolia if not already on it
       if (`0x${network.chainId.toString(16)}` !== SEPOLIA_CHAIN_ID) {
         await switchToSepolia();
@@ -60,10 +71,11 @@ export const Web3Provider = ({ children }) => {
 
   // Disconnect wallet
   const disconnectWallet = () => {
+    setProvider(null);
     setAccount(null);
     setChainId(null);
-    setProvider(null);
     setIsConnected(false);
+    setContract(null);
   };
 
   // Switch to Sepolia network
@@ -169,6 +181,15 @@ export const Web3Provider = ({ children }) => {
           setAccount(accounts[0]);
           setChainId(`0x${network.chainId.toString(16)}`);
           setIsConnected(true);
+
+          // Initialize contract
+          const signer = provider.getSigner();
+          const contractInstance = new ethers.Contract(
+            EXAM_REGISTRY_ADDRESS,
+            EXAM_REGISTRY_ABI,
+            signer
+          );
+          setContract(contractInstance);
         }
       } catch (error) {
         console.error('Error checking connection:', error);
@@ -182,6 +203,7 @@ export const Web3Provider = ({ children }) => {
     account,
     chainId,
     provider,
+    contract,
     isConnected,
     loading,
     connectWallet,
