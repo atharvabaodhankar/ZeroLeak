@@ -1,97 +1,71 @@
-import forge from 'node-forge';
+/**
+ * Crypto utilities for AES encryption/decryption
+ */
 
 /**
  * Generate a random AES key
- * @returns {string} Hex encoded 256-bit key
+ * @returns {string} Base64 encoded key
  */
 export const generateAESKey = () => {
-  return forge.random.getBytesSync(32);
+  const key = new Uint8Array(32); // 256-bit key
+  crypto.getRandomValues(key);
+  return btoa(String.fromCharCode(...key));
 };
 
 /**
- * Encrypt data with AES-CBC
+ * Encrypt data using AES-GCM
  * @param {Uint8Array} data 
- * @param {string} key - binary string
- * @returns {Object} { iv: hex, data: hex }
+ * @param {string} keyBase64 
+ * @returns {Object} { iv: string, encryptedData: string }
  */
-export const encryptAES = (data, key) => {
-  const iv = forge.random.getBytesSync(16);
-  const cipher = forge.cipher.createCipher('AES-CBC', key);
-  cipher.start({ iv: iv });
-  
-  // Convert Uint8Array to binary string
-  const binaryData = forge.util.createBuffer(data);
-  cipher.update(binaryData);
-  cipher.finish();
-  
+export const encryptAES = async (data, keyBase64) => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0)),
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt']
+  );
+
+  const iv = new Uint8Array(12); // 96-bit IV for GCM
+  crypto.getRandomValues(iv);
+
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    data
+  );
+
   return {
-    iv: forge.util.encode64(iv),
-    encryptedData: forge.util.encode64(cipher.output.getBytes())
+    iv: btoa(String.fromCharCode(...iv)),
+    encryptedData: btoa(String.fromCharCode(...new Uint8Array(encrypted)))
   };
 };
 
 /**
- * Decrypt data with AES-CBC
+ * Decrypt data using AES-GCM
  * @param {string} encryptedDataBase64 
- * @param {string} key - binary string
  * @param {string} ivBase64 
- * @returns {Uint8Array}
+ * @param {string} keyBase64 
+ * @returns {Promise<Uint8Array>} Decrypted data
  */
-export const decryptAES = (encryptedDataBase64, key, ivBase64) => {
-  const iv = forge.util.decode64(ivBase64);
-  const encryptedData = forge.util.decode64(encryptedDataBase64);
-  
-  const decipher = forge.cipher.createDecipher('AES-CBC', key);
-  decipher.start({ iv: iv });
-  decipher.update(forge.util.createBuffer(encryptedData));
-  const result = decipher.finish();
-  
-  if (!result) {
-    throw new Error('AES decryption failed');
-  }
-  
-  // Convert binary string to Uint8Array
-  const bytes = decipher.output.getBytes();
-  const uint8 = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) {
-    uint8[i] = bytes.charCodeAt(i);
-  }
-  return uint8;
-};
+export const decryptAES = async (encryptedDataBase64, ivBase64, keyBase64) => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0)),
+    { name: 'AES-GCM' },
+    false,
+    ['decrypt']
+  );
 
-/**
- * Encrypt a small piece of data (like an AES key) with a public key
- * @param {string} data - binary string
- * @param {string} publicKeyPem 
- * @returns {string} Base64 encoded encrypted data
- */
-export const encryptWithPublicKey = (data, publicKeyPem) => {
-  const publicKey = forge.pki.publicKeyFromPem(publicKeyPem);
-  const encrypted = publicKey.encrypt(data, 'RSA-OAEP');
-  return forge.util.encode64(encrypted);
-};
+  const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+  const encryptedData = Uint8Array.from(atob(encryptedDataBase64), c => c.charCodeAt(0));
 
-/**
- * Decrypt data with a private key
- * @param {string} encryptedDataBase64 
- * @param {string} privateKeyPem 
- * @returns {string} binary string
- */
-export const decryptWithPrivateKey = (encryptedDataBase64, privateKeyPem) => {
-  const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
-  const encryptedData = forge.util.decode64(encryptedDataBase64);
-  const decrypted = privateKey.decrypt(encryptedData, 'RSA-OAEP');
-  return decrypted;
-};
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encryptedData
+  );
 
-/**
- * Generate a new RSA Key Pair
- * @returns {Object} { publicKey, privateKey } in PEM format
- */
-export const generateKeyPair = () => {
-  const keys = forge.pki.rsa.generateKeyPair(2048);
-  return {
-    publicKey: forge.pki.publicKeyToPem(keys.publicKey),
-    privateKey: forge.pki.privateKeyToPem(keys.privateKey)
-  };
+  return new Uint8Array(decrypted);
 };

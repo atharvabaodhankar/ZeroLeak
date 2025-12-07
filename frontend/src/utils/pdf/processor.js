@@ -16,7 +16,7 @@ export const processPDF = async (file) => {
   const chunks = [];
   for (let i = 0; i < data.length; i += CHUNK_SIZE) {
     const chunkData = data.slice(i, i + CHUNK_SIZE);
-    const encrypted = encryptAES(chunkData, aesKey);
+    const encrypted = await encryptAES(chunkData, aesKey);
     chunks.push(encrypted);
   }
   
