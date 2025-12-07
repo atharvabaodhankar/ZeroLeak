@@ -141,11 +141,29 @@ export const Web3Provider = ({ children }) => {
   useEffect(() => {
     if (!isMetaMaskInstalled()) return;
 
-    const handleAccountsChanged = (accounts) => {
+    const handleAccountsChanged = async (accounts) => {
       if (accounts.length === 0) {
         disconnectWallet();
       } else if (accounts[0] !== account) {
+        console.log('🔄 MetaMask account changed to:', accounts[0]);
+        
+        // Update account and reinitialize contract
         setAccount(accounts[0]);
+        
+        if (provider) {
+          try {
+            const signer = provider.getSigner();
+            const contractInstance = new ethers.Contract(
+              EXAM_REGISTRY_ADDRESS,
+              EXAM_REGISTRY_ABI,
+              signer
+            );
+            setContract(contractInstance);
+            console.log('✅ Contract reinitialized for new account');
+          } catch (error) {
+            console.error('❌ Failed to reinitialize contract:', error);
+          }
+        }
       }
     };
 
