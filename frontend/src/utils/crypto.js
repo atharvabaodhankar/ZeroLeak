@@ -134,7 +134,45 @@ export const decryptWithPrivateKey = (encryptedDataBase64, privateKeyPem) => {
 };
 
 /**
- * Generate a new RSA Key Pair
+ * Generate a deterministic RSA Key Pair from a signature
+ * This ensures the same wallet always gets the same keys
+ * @param {string} signature - MetaMask signature to derive keys from
+ * @returns {Promise<Object>} { publicKey, privateKey } in PEM format
+ */
+export const generateDeterministicKeyPair = async (signature) => {
+  // Use the signature as a seed for deterministic key generation
+  const encoder = new TextEncoder();
+  const data = encoder.encode(signature);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  
+  // Convert hash to hex seed
+  const seed = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  // Create a seeded PRNG
+  const prng = forge.random.createInstance();
+  
+  // Seed the PRNG with our deterministic seed
+  // We need to convert the hex seed to bytes
+  const seedBytes = forge.util.hexToBytes(seed);
+  prng.seedFileSync = () => seedBytes;
+  
+  // Generate keypair synchronously (no workers) for determinism
+  const keypair = forge.pki.rsa.generateKeyPair({ 
+    bits: 2048, 
+    workers: 0, // Disable workers to avoid errors
+    prng: prng,
+    algorithm: 'PRIMEINC' // Use deterministic algorithm
+  });
+  
+  return {
+    publicKey: forge.pki.publicKeyToPem(keypair.publicKey),
+    privateKey: forge.pki.privateKeyToPem(keypair.privateKey)
+  };
+};
+
+/**
+ * Generate a new RSA Key Pair (DEPRECATED - use generateDeterministicKeyPair)
  * @returns {Promise<Object>} { publicKey, privateKey } in PEM format
  */
 export const generateKeyPair = () => {

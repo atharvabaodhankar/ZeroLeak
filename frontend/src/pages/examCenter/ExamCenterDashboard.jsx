@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWeb3 } from '../../context/Web3Context';
 import { reassemblePDF } from '../../utils/pdf/reassembler';
-import { generateKeyPair } from '../../utils/crypto';
+import { generateDeterministicKeyPair } from '../../utils/crypto';
 import { ethers } from 'ethers';
 
 const ExamCenterDashboard = () => {
@@ -19,40 +19,29 @@ const ExamCenterDashboard = () => {
     const checkAndGenerateKeys = async () => {
       if (!account || !contract) return;
 
-      const privKey = localStorage.getItem(`chainseal_priv_${account}`);
-      const pubKey = localStorage.getItem(`chainseal_pub_${account}`);
-
-      if (!privKey || !pubKey) {
-        setKeyStatus('Initializing secure environment (generating keys)...');
-        try {
-          const keys = await generateKeyPair();
-          localStorage.setItem(`chainseal_priv_${account}`, keys.privateKey);
-          localStorage.setItem(`chainseal_pub_${account}`, keys.publicKey);
-          
-          // Check if center is registered
-          const centerInfo = await contract.centers(account);
-          if (!centerInfo.isRegistered) {
-            setKeyStatus('');
-            setShowNamePrompt(true);
-          } else {
-            setKeyStatus('');
-          }
-        } catch (error) {
-          console.error("Key generation failed:", error);
-          setKeyStatus('Error initializing security. Please reload.');
-        }
-      } else {
+      try {
         // Check if center is registered
-        try {
-          const centerInfo = await contract.centers(account);
-          if (!centerInfo.isRegistered) {
-            setShowNamePrompt(true);
-          }
+        const centerInfo = await contract.centers(account);
+        
+        if (!centerInfo.isRegistered) {
+          setKeyStatus('Initializing secure environment...');
+          
+          // Generate deterministic keys from MetaMask signature
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const message = `Generate ChainSeal encryption keys for Exam Center\nAccount: ${account}`;
+          const signature = await signer.signMessage(message);
+          
+          const keys = await generateDeterministicKeyPair(signature);
+          
           setKeyStatus('');
-        } catch (error) {
-          console.error("Error checking registration:", error);
+          setShowNamePrompt(true);
+        } else {
           setKeyStatus('');
         }
+      } catch (error) {
+        console.error("Error checking registration:", error);
+        setKeyStatus('Error initializing security. Please reload.');
       }
     };
 

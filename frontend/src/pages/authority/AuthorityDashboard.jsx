@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWeb3 } from '../../context/Web3Context';
 import ScheduleExamModal from '../../components/authority/ScheduleExamModal';
-import { generateKeyPair } from '../../utils/crypto';
+import { generateDeterministicKeyPair } from '../../utils/crypto';
 import { ethers } from 'ethers';
 
 const AuthorityDashboard = () => {
@@ -47,38 +47,41 @@ const AuthorityDashboard = () => {
     const checkAndGenerateKeys = async () => {
       if (!account || !contract) return;
 
-      const privKey = localStorage.getItem(`chainseal_priv_${account}`);
-      const pubKey = localStorage.getItem(`chainseal_pub_${account}`);
-
-      if (!privKey || !pubKey) {
-        setKeyStatus('Initializing authority keys...');
-        try {
-          const keys = await generateKeyPair();
-          localStorage.setItem(`chainseal_priv_${account}`, keys.privateKey);
-          localStorage.setItem(`chainseal_pub_${account}`, keys.publicKey);
-          
-          // Register authority public key
-          const tx = await contract.registerAuthority(ethers.utils.toUtf8Bytes(keys.publicKey));
-          await tx.wait();
-          setKeyStatus('');
-          setIsRegistered(true);
-        } catch (error) {
-          console.error("Key generation failed:", error);
-          setKeyStatus('Error initializing keys. Please reload.');
-          setIsRegistered(false);
-        }
-      } else {
-        setKeyStatus('');
-      }
-      
-      // Check if already registered on blockchain
       try {
-        setCheckingRegistration(true);
+        setKeyStatus('Checking authority registration...');
+        
+        // Check if already registered on blockchain
         const authorityPubKey = await contract.authorityPublicKey();
-        const isReg = authorityPubKey && authorityPubKey !== '0x' && authorityPubKey.length > 0;
-        setIsRegistered(isReg);
+        const isAlreadyRegistered = authorityPubKey && authorityPubKey !== '0x' && authorityPubKey.length > 0;
+        
+        if (isAlreadyRegistered) {
+          setIsRegistered(true);
+          setKeyStatus('');
+          setCheckingRegistration(false);
+          return;
+        }
+        
+        // Not registered - need to generate and register keys
+        setKeyStatus('Initializing authority keys...');
+        
+        // Get MetaMask signature for deterministic key generation
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const message = `Generate ChainSeal encryption keys for Authority\nAccount: ${account}`;
+        const signature = await signer.signMessage(message);
+        
+        // Generate deterministic keys from signature
+        const keys = await generateDeterministicKeyPair(signature);
+        
+        // Register authority public key on blockchain
+        const tx = await contract.registerAuthority(ethers.utils.toUtf8Bytes(keys.publicKey));
+        await tx.wait();
+        
+        setKeyStatus('');
+        setIsRegistered(true);
       } catch (error) {
-        console.error('Error checking registration:', error);
+        console.error("Key generation failed:", error);
+        setKeyStatus('Error initializing keys. Please reload.');
         setIsRegistered(false);
       } finally {
         setCheckingRegistration(false);

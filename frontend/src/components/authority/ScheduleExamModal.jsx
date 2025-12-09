@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWeb3 } from '../../context/Web3Context';
-import { decryptWithPrivateKey, encryptWithPublicKey } from '../../utils/crypto';
+import { decryptWithPrivateKey, encryptWithPublicKey, generateDeterministicKeyPair } from '../../utils/crypto';
 import { ethers } from 'ethers';
 
 const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
@@ -74,10 +74,24 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
         return;
       }
 
-      // Decrypt the master AES key using Authority's private key
-      const authorityPrivKey = localStorage.getItem(`chainseal_priv_${account}`);
-      if (!authorityPrivKey) {
-        alert('Authority private key not found. Please generate keys first.');
+      // Regenerate Authority's private key from MetaMask signature
+      let authorityPrivKey;
+      let masterAESKey;
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const message = `Generate ChainSeal encryption keys for Authority\nAccount: ${account}`;
+        const signature = await signer.signMessage(message);
+        
+        // Generate deterministic keys from signature
+        const keys = await generateDeterministicKeyPair(signature);
+        authorityPrivKey = keys.privateKey;
+        
+        const encryptedMasterKeyBase64 = ethers.utils.toUtf8String(paper.authorityEncryptedKey);
+        masterAESKey = decryptWithPrivateKey(encryptedMasterKeyBase64, authorityPrivKey);
+      } catch (error) {
+        console.error('Error regenerating encryption keys:', error);
+        alert('Failed to regenerate encryption keys. Please try again.');
         setLoading(false);
         return;
       }
@@ -97,9 +111,6 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
         setLoading(false);
         return;
       }
-
-      const encryptedMasterKeyBase64 = ethers.utils.toUtf8String(paper.authorityEncryptedKey);
-      const masterAESKey = decryptWithPrivateKey(encryptedMasterKeyBase64, authorityPrivKey);
 
       // Re-encrypt for each selected center
       const centerAddresses = [];
