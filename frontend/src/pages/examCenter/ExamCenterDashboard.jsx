@@ -48,6 +48,13 @@ const ExamCenterDashboard = () => {
         // Check if center is registered
         const centerInfo = await contract.centers(account);
         
+        console.log('🔍 Center registration check:', {
+          account,
+          isRegistered: centerInfo.isRegistered,
+          centerName: centerInfo.name,
+          hasPublicKey: centerInfo.publicKey && centerInfo.publicKey !== '0x'
+        });
+        
         if (!centerInfo.isRegistered) {
           setKeyStatus('Initializing secure environment...');
           
@@ -59,9 +66,73 @@ const ExamCenterDashboard = () => {
           
           const keys = await generateDeterministicKeyPair(signature);
           
+          // Store keys in localStorage for later use
+          localStorage.setItem(`chainseal_pub_${account}`, keys.publicKey);
+          localStorage.setItem(`chainseal_priv_${account}`, keys.privateKey);
+          
+          console.log('🔑 Generated and stored encryption keys for exam center:', {
+            account,
+            publicKeyLength: keys.publicKey.length,
+            privateKeyLength: keys.privateKey.length,
+            publicKeyPreview: keys.publicKey.substring(0, 100) + '...'
+          });
+          
           setKeyStatus('');
           setShowNamePrompt(true);
         } else {
+          // Center is registered, but check if we have keys in localStorage
+          const existingPrivKey = localStorage.getItem(`chainseal_priv_${account}`);
+          const existingPubKey = localStorage.getItem(`chainseal_pub_${account}`);
+          
+          if (!existingPrivKey || !existingPubKey) {
+            setKeyStatus('Regenerating security keys...');
+            
+            // Regenerate keys from MetaMask signature
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const signer = provider.getSigner();
+            const message = `Generate ChainSeal encryption keys for Exam Center\nAccount: ${account}`;
+            const signature = await signer.signMessage(message);
+            
+            const keys = await generateDeterministicKeyPair(signature);
+            
+            // Store keys in localStorage
+            localStorage.setItem(`chainseal_pub_${account}`, keys.publicKey);
+            localStorage.setItem(`chainseal_priv_${account}`, keys.privateKey);
+            
+            console.log('🔑 Regenerated and stored encryption keys for registered center:', {
+              account,
+              publicKeyLength: keys.publicKey.length,
+              privateKeyLength: keys.privateKey.length,
+              publicKeyPreview: keys.publicKey.substring(0, 100) + '...'
+            });
+            
+            // Also verify the keys match what's on blockchain
+            try {
+              const blockchainPubKeyBytes = await contract.getCenterPublicKey(account);
+              const blockchainPubKeyPem = new TextDecoder().decode(ethers.utils.arrayify(blockchainPubKeyBytes));
+              
+              console.log('🔍 Key verification after regeneration:', {
+                blockchainPublicKey: blockchainPubKeyPem.substring(0, 100) + '...',
+                regeneratedPublicKey: keys.publicKey.substring(0, 100) + '...',
+                keysMatch: blockchainPubKeyPem === keys.publicKey,
+                blockchainKeyLength: blockchainPubKeyPem.length,
+                regeneratedKeyLength: keys.publicKey.length
+              });
+              
+              if (blockchainPubKeyPem !== keys.publicKey) {
+                setKeyStatus('⚠️ Key mismatch detected! You may not be using the same MetaMask account that registered this center.');
+              }
+            } catch (keyCheckError) {
+              console.error('Error checking blockchain keys:', keyCheckError);
+            }
+          } else {
+            console.log('🔑 Using existing keys from localStorage:', {
+              account,
+              publicKeyLength: existingPubKey.length,
+              privateKeyLength: existingPrivKey.length
+            });
+          }
+          
           setKeyStatus('');
         }
       } catch (error) {
@@ -131,10 +202,42 @@ const ExamCenterDashboard = () => {
   const handleDownload = async (paper) => {
     const privKey = localStorage.getItem(`chainseal_priv_${account}`);
     if (!privKey) {
-      alert('Security keys missing. Please reload the page.');
-      return;
+      setStatus('🔑 Security keys missing. Regenerating keys...');
+      
+      try {
+        // Try to regenerate keys
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const message = `Generate ChainSeal encryption keys for Exam Center\nAccount: ${account}`;
+        const signature = await signer.signMessage(message);
+        
+        const keys = await generateDeterministicKeyPair(signature);
+        
+        // Store keys in localStorage
+        localStorage.setItem(`chainseal_pub_${account}`, keys.publicKey);
+        localStorage.setItem(`chainseal_priv_${account}`, keys.privateKey);
+        
+        console.log('🔑 Regenerated keys for download:', {
+          account,
+          publicKeyLength: keys.publicKey.length,
+          privateKeyLength: keys.privateKey.length
+        });
+        
+        // Use the newly generated private key
+        const newPrivKey = keys.privateKey;
+        return handleDownloadWithKey(paper, newPrivKey);
+        
+      } catch (error) {
+        console.error('Key regeneration failed:', error);
+        setStatus('❌ Failed to regenerate security keys. Please reload the page.');
+        return;
+      }
     }
 
+    return handleDownloadWithKey(paper, privKey);
+  };
+
+  const handleDownloadWithKey = async (paper, privKey) => {
     try {
       setDownloadingId(paper.id);
       setStatus('Fetching your encrypted key...');
@@ -142,10 +245,44 @@ const ExamCenterDashboard = () => {
       const encryptedKeyBytes = await contract.getMyPaperKey(paper.id);
       const encryptedKeyBase64 = ethers.utils.toUtf8String(encryptedKeyBytes);
       
+      console.log('🔍 Download debug info:', {
+        paperId: paper.id,
+        account,
+        encryptedKeyLength: encryptedKeyBase64.length,
+        encryptedKeyPreview: encryptedKeyBase64.substring(0, 50) + '...',
+        privateKeyLength: privKey.length,
+        privateKeyPreview: privKey.substring(0, 50) + '...'
+      });
+      
+      // Check what public key is registered on blockchain for this center
+      const blockchainPubKeyBytes = await contract.getCenterPublicKey(account);
+      const blockchainPubKeyPem = new TextDecoder().decode(ethers.utils.arrayify(blockchainPubKeyBytes));
+      
+      // Generate current keys to compare
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const message = `Generate ChainSeal encryption keys for Exam Center\nAccount: ${account}`;
+      const signature = await signer.signMessage(message);
+      const currentKeys = await generateDeterministicKeyPair(signature);
+      
+      console.log('🔍 Key comparison for download:', {
+        blockchainPublicKey: blockchainPubKeyPem.substring(0, 100) + '...',
+        currentPublicKey: currentKeys.publicKey.substring(0, 100) + '...',
+        keysMatch: blockchainPubKeyPem === currentKeys.publicKey,
+        blockchainKeyLength: blockchainPubKeyPem.length,
+        currentKeyLength: currentKeys.publicKey.length
+      });
+      
+      if (blockchainPubKeyPem !== currentKeys.publicKey) {
+        setStatus('❌ Key mismatch detected! Your current MetaMask account does not match the registered exam center keys.');
+        console.error('❌ Key mismatch: The keys generated from your current MetaMask account do not match the public key registered on the blockchain for this center.');
+        return;
+      }
+      
       setStatus('Fetching chunks and reassembling PDF...');
       const pdfBlob = await reassemblePDF(paper.ipfsCIDs, encryptedKeyBase64, privKey);
       
-      setStatus('Success! Opening PDF...');
+      setStatus('✅ Success! Opening PDF...');
       const url = URL.createObjectURL(pdfBlob);
       window.open(url);
       
@@ -158,7 +295,12 @@ const ExamCenterDashboard = () => {
       setTimeout(() => setStatus(''), 3000);
     } catch (error) {
       console.error('Download failed:', error);
-      setStatus(`Error: ${error.message}`);
+      
+      if (error.message.includes('Invalid RSAES-OAEP padding')) {
+        setStatus('❌ Decryption failed: You may not be using the same MetaMask account that registered this exam center. Please switch to the correct account.');
+      } else {
+        setStatus(`❌ Download failed: ${error.message}`);
+      }
     } finally {
       setDownloadingId(null);
     }
