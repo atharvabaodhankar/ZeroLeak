@@ -116,11 +116,44 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
         console.log('🔍 Attempting to decrypt master key:', {
           encryptedKeyLength: encryptedMasterKeyBase64.length,
           privateKeyLength: authorityPrivKey.length,
-          encryptedKeyPreview: encryptedMasterKeyBase64.substring(0, 50) + '...'
+          encryptedKeyPreview: encryptedMasterKeyBase64.substring(0, 50) + '...',
+          rawBytesLength: encryptedKeyBytes.length,
+          rawBytesPreview: Array.from(encryptedKeyBytes.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
         });
         
-        masterAESKey = decryptWithPrivateKey(encryptedMasterKeyBase64, authorityPrivKey);
-        console.log('✅ Successfully decrypted master AES key');
+        // Try multiple decryption approaches
+        let masterAESKey;
+        let decryptionMethod = '';
+        
+        try {
+          // Method 1: Direct decryption with converted base64
+          masterAESKey = decryptWithPrivateKey(encryptedMasterKeyBase64, authorityPrivKey);
+          decryptionMethod = 'Method 1: TextDecoder conversion';
+        } catch (error1) {
+          console.log('🔍 Method 1 failed, trying Method 2...');
+          
+          try {
+            // Method 2: Try with ethers.utils.toUtf8String (original approach)
+            const encryptedKeyUtf8 = ethers.utils.toUtf8String(paper.authorityEncryptedKey);
+            masterAESKey = decryptWithPrivateKey(encryptedKeyUtf8, authorityPrivKey);
+            decryptionMethod = 'Method 2: ethers.utils.toUtf8String';
+          } catch (error2) {
+            console.log('🔍 Method 2 failed, trying Method 3...');
+            
+            try {
+              // Method 3: Try treating as raw binary data
+              const binaryString = String.fromCharCode(...encryptedKeyBytes);
+              const base64Data = btoa(binaryString);
+              masterAESKey = decryptWithPrivateKey(base64Data, authorityPrivKey);
+              decryptionMethod = 'Method 3: Binary to base64';
+            } catch (error3) {
+              console.error('All decryption methods failed:', { error1: error1.message, error2: error2.message, error3: error3.message });
+              throw new Error(`All decryption methods failed. This paper might have been encrypted with a different key or format. Please ask the teacher to re-upload this paper after ensuring Authority is properly registered.`);
+            }
+          }
+        }
+        
+        console.log(`✅ Successfully decrypted master AES key using: ${decryptionMethod}`);
         
       } catch (error) {
         console.error('Error regenerating encryption keys:', error);
@@ -128,18 +161,25 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
         let errorMessage = `Failed to regenerate encryption keys: ${error.message}\n\n`;
         
         if (error.message.includes('Invalid RSAES-OAEP padding')) {
-          errorMessage += `This error indicates a key mismatch. Possible causes:\n\n`;
-          errorMessage += `1. You're not the same Authority who registered the public key\n`;
-          errorMessage += `2. The paper was encrypted with a different Authority's key\n`;
-          errorMessage += `3. You switched MetaMask accounts\n\n`;
-          errorMessage += `Solution: Use the same MetaMask account that originally registered as Authority.`;
+          errorMessage += `🔍 RSA Padding Error Analysis:\n\n`;
+          errorMessage += `✅ Keys Match: Your account IS the registered Authority\n`;
+          errorMessage += `❌ Decryption Failed: The encrypted data format is incompatible\n\n`;
+          errorMessage += `This usually means:\n`;
+          errorMessage += `1. Paper was uploaded BEFORE Authority registration\n`;
+          errorMessage += `2. Paper was uploaded with an older version of the system\n`;
+          errorMessage += `3. There's a data format mismatch\n\n`;
+          errorMessage += `🔧 SOLUTION: Ask the teacher to RE-UPLOAD this paper.\n`;
+          errorMessage += `New uploads will use the correct encryption format.`;
         } else if (error.message.includes('Key mismatch')) {
           errorMessage += `Please switch to the MetaMask account that originally registered as Authority.`;
+        } else if (error.message.includes('All decryption methods failed')) {
+          errorMessage += `🔧 SOLUTION: This paper needs to be re-uploaded by the teacher.\n`;
+          errorMessage += `The current encryption format is incompatible with your Authority keys.`;
         } else {
           errorMessage += `Other possible causes:\n`;
           errorMessage += `1. Authority hasn't registered yet\n`;
-          errorMessage += `2. Paper was uploaded before Authority registration\n`;
-          errorMessage += `3. Network or blockchain connection issues`;
+          errorMessage += `2. Network or blockchain connection issues\n`;
+          errorMessage += `3. Temporary MetaMask connectivity problems`;
         }
         
         alert(errorMessage);
