@@ -84,7 +84,8 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
 
       // Regenerate Authority's private key from MetaMask signature
       let authorityPrivKey;
-      let masterAESKey;
+      let masterAESKey; // Declare at function scope so it's accessible later
+      
       try {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
@@ -130,7 +131,6 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
         });
         
         // Try multiple decryption approaches
-        let masterAESKey;
         let decryptionMethod = '';
         
         try {
@@ -162,6 +162,11 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
         }
         
         console.log(`✅ Successfully decrypted master AES key using: ${decryptionMethod}`);
+        console.log('🔍 Decrypted AES key details:', {
+          masterAESKeyType: typeof masterAESKey,
+          masterAESKeyLength: masterAESKey?.length,
+          masterAESKeyPreview: masterAESKey?.substring?.(0, 20) + '...'
+        });
         
       } catch (error) {
         console.error('Error regenerating encryption keys:', error);
@@ -194,6 +199,20 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
         setLoading(false);
         return;
       }
+
+      // Validate that masterAESKey was successfully decrypted
+      if (!masterAESKey) {
+        console.error('❌ Master AES key is undefined after decryption attempt');
+        alert('Failed to decrypt the master AES key. Please try again or contact support.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ Master AES key validation passed:', {
+        masterAESKeyType: typeof masterAESKey,
+        masterAESKeyLength: masterAESKey?.length,
+        masterAESKeyPreview: masterAESKey?.substring?.(0, 20) + '...'
+      });
 
       // Check if paper has authorityEncryptedKey
       console.log('🔍 DEBUG: Paper data:', {
