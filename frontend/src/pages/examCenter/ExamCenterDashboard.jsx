@@ -13,6 +13,31 @@ const ExamCenterDashboard = () => {
   const [status, setStatus] = useState('');
   const [centerName, setCenterName] = useState('');
   const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // Update current time every second for countdown
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Helper function to format time remaining
+  const getTimeRemaining = (unlockTimestamp) => {
+    const unlockTime = unlockTimestamp.toNumber() * 1000;
+    const remaining = unlockTime - currentTime;
+    
+    if (remaining <= 0) return 'Ready to unlock!';
+    
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+    
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s remaining`;
+    if (minutes > 0) return `${minutes}m ${seconds}s remaining`;
+    return `${seconds}s remaining`;
+  };
 
   // Auto-generate keys and register center on mount/account change
   useEffect(() => {
@@ -146,9 +171,28 @@ const ExamCenterDashboard = () => {
       await tx.wait();
       setStatus('Paper unlocked successfully!');
       fetchPapers();
+      setTimeout(() => setStatus(''), 3000);
     } catch (error) {
       console.error('Unlock failed:', error);
-      setStatus(`Error: ${error.reason || error.message}`);
+      
+      // Handle specific error cases with user-friendly messages
+      let errorMessage = '';
+      if (error.reason === 'Too early to unlock' || error.message.includes('Too early to unlock')) {
+        const paper = papers.find(p => p.id === paperId);
+        const unlockTime = paper ? new Date(paper.unlockTimestamp.toNumber() * 1000).toLocaleString() : 'scheduled time';
+        errorMessage = `⏰ Cannot unlock yet! This paper can only be unlocked at: ${unlockTime}`;
+      } else if (error.reason === 'Paper not scheduled' || error.message.includes('not scheduled')) {
+        errorMessage = '❌ This paper has not been scheduled by the Authority yet.';
+      } else if (error.reason === 'Not authorized' || error.message.includes('not authorized')) {
+        errorMessage = '🚫 You are not authorized to unlock this paper.';
+      } else if (error.message.includes('user rejected')) {
+        errorMessage = '❌ Transaction was cancelled by user.';
+      } else {
+        errorMessage = `❌ Unlock failed: ${error.reason || error.message}`;
+      }
+      
+      setStatus(errorMessage);
+      setTimeout(() => setStatus(''), 5000); // Show error longer
     }
   };
 
@@ -186,8 +230,21 @@ const ExamCenterDashboard = () => {
       )}
 
       {status && (
-        <div className="glass-card p-4 bg-blue-500/10 border-blue-500/20 text-blue-500 text-sm animate-pulse text-center">
-          {status}
+        <div className={`glass-card p-4 text-sm text-center animate-in slide-in-from-top-4 duration-300 ${
+          status.includes('❌') || status.includes('🚫') || status.includes('⏰') 
+            ? 'bg-red-500/10 border-red-500/20 text-red-400' 
+            : status.includes('✅') || status.includes('Success')
+            ? 'bg-green-500/10 border-green-500/20 text-green-400'
+            : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
+        }`}>
+          {status.includes('Unlocking') || status.includes('Registering') ? (
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+              {status}
+            </div>
+          ) : (
+            status
+          )}
         </div>
       )}
 
@@ -227,16 +284,34 @@ const ExamCenterDashboard = () => {
 
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-[hsl(var(--color-text-muted))]">
-                    Unlock Time: {new Date(paper.unlockTimestamp.toNumber() * 1000).toLocaleString()}
+                    <div>Unlock Time: {new Date(paper.unlockTimestamp.toNumber() * 1000).toLocaleString()}</div>
+                    {!paper.isUnlocked && (
+                      <div className={`mt-1 font-mono ${
+                        paper.unlockTimestamp.toNumber() * 1000 <= currentTime 
+                          ? 'text-green-400 animate-pulse' 
+                          : 'text-yellow-400'
+                      }`}>
+                        {getTimeRemaining(paper.unlockTimestamp)}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex gap-2">
                     {!paper.isUnlocked ? (
                       <button
                         onClick={() => handleUnlock(paper.id)}
-                        className="btn-outline py-1.5 px-4 text-xs font-bold"
+                        disabled={paper.unlockTimestamp.toNumber() * 1000 > currentTime}
+                        className={`py-1.5 px-4 text-xs font-bold rounded transition-all ${
+                          paper.unlockTimestamp.toNumber() * 1000 <= currentTime
+                            ? 'btn-primary animate-pulse'
+                            : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'
+                        }`}
+                        title={paper.unlockTimestamp.toNumber() * 1000 > currentTime 
+                          ? `Cannot unlock until ${new Date(paper.unlockTimestamp.toNumber() * 1000).toLocaleString()}`
+                          : 'Click to unlock this paper'
+                        }
                       >
-                        Unlock
+                        {paper.unlockTimestamp.toNumber() * 1000 <= currentTime ? '🔓 Unlock Now' : '⏰ Locked'}
                       </button>
                     ) : (
                       <button
@@ -250,7 +325,7 @@ const ExamCenterDashboard = () => {
                             Processing...
                           </>
                         ) : (
-                          'Download & Decrypt'
+                          '📄 Download & Decrypt'
                         )}
                       </button>
                     )}
