@@ -312,6 +312,15 @@ const ExamCenterDashboard = () => {
       }
       
       setStatus('Fetching chunks and reassembling PDF...');
+      
+      console.log('🔍 About to decrypt AES key:', {
+        encryptedKeyLength: encryptedKeyBase64.length,
+        encryptedKeyPreview: encryptedKeyBase64.substring(0, 50) + '...',
+        privateKeyLength: privKey.length,
+        privateKeyPreview: privKey.substring(0, 50) + '...',
+        keysMatchedBlockchain: true // We know this from the check above
+      });
+      
       const pdfBlob = await reassemblePDF(paper.ipfsCIDs, encryptedKeyBase64, privKey);
       
       setStatus('✅ Success! Opening PDF...');
@@ -329,7 +338,10 @@ const ExamCenterDashboard = () => {
       console.error('Download failed:', error);
       
       if (error.message.includes('Invalid RSAES-OAEP padding')) {
-        setStatus('❌ Decryption failed: Key mismatch detected. Click "🔑 Fix Keys" to regenerate your encryption keys.');
+        setStatus('❌ Decryption failed: This paper was encrypted with your OLD public key. The Authority needs to RE-SCHEDULE this paper with your current key.');
+        console.error('❌ RSA Padding Error: The encrypted AES key was created with a different public key than your current one. This happens when:');
+        console.error('1. The paper was scheduled before you re-registered your center');
+        console.error('2. The Authority needs to re-schedule this paper to encrypt it with your current public key');
       } else {
         setStatus(`❌ Download failed: ${error.message}`);
       }
