@@ -109,10 +109,14 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
         }
         
         // Try to decrypt the master AES key
-        const encryptedMasterKeyBase64 = ethers.utils.toUtf8String(paper.authorityEncryptedKey);
+        // The encrypted key was stored as UTF-8 bytes of base64 string, so we need to convert it back properly
+        const encryptedKeyBytes = ethers.utils.arrayify(paper.authorityEncryptedKey);
+        const encryptedMasterKeyBase64 = new TextDecoder().decode(encryptedKeyBytes);
+        
         console.log('🔍 Attempting to decrypt master key:', {
           encryptedKeyLength: encryptedMasterKeyBase64.length,
-          privateKeyLength: authorityPrivKey.length
+          privateKeyLength: authorityPrivKey.length,
+          encryptedKeyPreview: encryptedMasterKeyBase64.substring(0, 50) + '...'
         });
         
         masterAESKey = decryptWithPrivateKey(encryptedMasterKeyBase64, authorityPrivKey);
@@ -150,7 +154,8 @@ const ScheduleExamModal = ({ paper, onClose, onSchedule }) => {
         authorityEncryptedKey: paper.authorityEncryptedKey,
         keyType: typeof paper.authorityEncryptedKey,
         keyLength: paper.authorityEncryptedKey?.length,
-        isHex: paper.authorityEncryptedKey?.startsWith?.('0x')
+        isHex: paper.authorityEncryptedKey?.startsWith?.('0x'),
+        keyPreview: paper.authorityEncryptedKey?.substring?.(0, 100) + '...'
       });
       
       if (!paper.authorityEncryptedKey || paper.authorityEncryptedKey === '0x' || paper.authorityEncryptedKey.length <= 2) {
