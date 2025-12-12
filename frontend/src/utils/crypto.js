@@ -275,9 +275,13 @@ export const generateTimeLockedKey = async (unlockTimestamp, salt) => {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const timeSeed = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   
-  // Use the time seed to encrypt the actual AES key
-  // This creates a "time lock" - the key can only be decrypted with the correct time+salt
-  const timeKey = timeSeed.substring(0, 64); // Use first 64 chars as key
+  // Create a proper 256-bit key from the time seed (first 64 hex chars = 32 bytes = 256 bits)
+  const timeKeyHex = timeSeed.substring(0, 64);
+  const timeKeyBytes = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    timeKeyBytes[i] = parseInt(timeKeyHex.substr(i * 2, 2), 16);
+  }
+  const timeKey = arrayToBase64(timeKeyBytes);
   
   // Encrypt the actual AES key with the time-derived key
   const timeLockedKey = await encryptAES(
@@ -289,6 +293,7 @@ export const generateTimeLockedKey = async (unlockTimestamp, salt) => {
     unlockTimestamp,
     salt: salt.substring(0, 10) + '...',
     timeSeed: timeSeed.substring(0, 20) + '...',
+    timeKeyLength: timeKey.length,
     actualAESKeyLength: actualAESKey.length,
     timeLockedKeyLength: timeLockedKey.encryptedData.length
   });
@@ -322,7 +327,13 @@ export const decryptTimeLockedKey = async (timeLockedKeyJson, unlockTimestamp, s
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const timeSeed = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   
-  const timeKey = timeSeed.substring(0, 64);
+  // Recreate the time key
+  const timeKeyHex = timeSeed.substring(0, 64);
+  const timeKeyBytes = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    timeKeyBytes[i] = parseInt(timeKeyHex.substr(i * 2, 2), 16);
+  }
+  const timeKey = arrayToBase64(timeKeyBytes);
   
   // Parse the time-locked key
   const timeLockedKey = JSON.parse(timeLockedKeyJson);
