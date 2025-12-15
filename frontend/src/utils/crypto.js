@@ -331,7 +331,10 @@ export const decryptTimeLockedKey = async (timeLockedKeyJson, unlockTimestamp, s
     console.log('🔍 Time seed recreation:', {
       timeData: timeData.substring(0, 50) + '...',
       timeSeedLength: timeSeed.length,
-      timeSeedPreview: timeSeed.substring(0, 20) + '...'
+      timeSeedPreview: timeSeed.substring(0, 20) + '...',
+      fullTimeData: timeData,
+      fullSalt: salt,
+      unlockTimestamp: unlockTimestamp
     });
     
     // Recreate the time key

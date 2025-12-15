@@ -136,11 +136,14 @@ const ExamCenterDashboard = () => {
       const [timeLockedKeyBytes, salt] = await contract.getTimeLockedKey(paper.id);
       const timeLockedKeyJson = ethers.utils.toUtf8String(timeLockedKeyBytes);
       
-      console.log('🔍 Time-locked key download debug:', {
+      console.log('🔍 Raw blockchain data:', {
         paperId: paper.id,
-        account,
-        timeLockedKeyLength: timeLockedKeyJson.length,
-        salt: salt.substring(0, 20) + '...',
+        timeLockedKeyBytesLength: timeLockedKeyBytes.length,
+        timeLockedKeyBytesHex: timeLockedKeyBytes.substring(0, 100) + '...',
+        saltLength: salt.length,
+        saltValue: salt,
+        timeLockedKeyJsonLength: timeLockedKeyJson.length,
+        timeLockedKeyJsonPreview: timeLockedKeyJson.substring(0, 100) + '...',
         unlockTimestamp: paper.unlockTimestamp.toNumber(),
         currentTime: Math.floor(Date.now() / 1000)
       });
@@ -164,7 +167,9 @@ const ExamCenterDashboard = () => {
     } catch (error) {
       console.error('Download failed:', error);
       
-      if (error.message.includes('Time lock active')) {
+      if (error.message.includes('Time-locked key decryption failed')) {
+        setStatus('❌ This paper was created with an older system version. Please ask the Authority to re-schedule this paper with the current system, or upload a new paper.');
+      } else if (error.message.includes('Time lock active')) {
         setStatus(`⏰ Paper is still time-locked. ${error.message}`);
       } else if (error.message.includes('Not assigned')) {
         setStatus('❌ You are not assigned to this paper.');
