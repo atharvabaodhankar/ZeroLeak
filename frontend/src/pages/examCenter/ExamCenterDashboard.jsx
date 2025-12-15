@@ -44,6 +44,8 @@ const ExamCenterDashboard = () => {
       if (!account || !contract) return;
 
       try {
+        setKeyStatus('Checking registration...');
+        
         // Check if center is registered
         const centerInfo = await contract.centers(account);
         
@@ -54,7 +56,10 @@ const ExamCenterDashboard = () => {
         });
         
         if (!centerInfo.isRegistered) {
+          setKeyStatus('');
           setShowNamePrompt(true);
+        } else {
+          setKeyStatus('');
         }
       } catch (error) {
         console.error("Error checking registration:", error);
