@@ -1,4 +1,4 @@
-# 🧠 SYSTEM DESIGN (v4.0.0)
+# 🧠 ZeroLeak: SYSTEM DESIGN (v4.0.0)
 
 ## Decentralized Exam Paper Leak Prevention System
 ### *The "Peak Security" Zero-Trust Architecture*

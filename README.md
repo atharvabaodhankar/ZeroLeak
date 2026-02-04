@@ -1,4 +1,4 @@
-# 🛡️ Paper Leak System (v4.0.0)
+# 🛡️ ZeroLeak (v4.0.0)
 
 > **Zero-Trust Decentralized Exam Paper Distribution**
 > A military-grade secure system designed to prevent leaks by ensuring question papers remain unreadable until exactly exam time, enforced by blockchain timelocks and distributed cryptographic trust.

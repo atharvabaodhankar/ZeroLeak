@@ -1,4 +1,4 @@
-# Paper Leak System: Peak Security Architecture Report
+# ZeroLeak: Peak Security Architecture Report
 
 ## 🛡️ Executive Summary
 The Paper Leak System has been upgraded to a **Zero-Trust, Multi-Layer Cryptographic Architecture**. By integrating decentralized trust through **Shamir's Secret Sharing (SSS)** and hardware-verified-style **Smart Contract Timelocks**, we have created a system where even the system administrators (the Authority) cannot access sensitive data prematurely.
