@@ -1,0 +1,27 @@
+# ZeroLeak Root Gitignore
+# ---------------------
+
+# Dependencies
+**/node_modules
+**/package-lock.json
+
+# Environment Variables (CRITICAL)
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Build outputs
+**/dist
+**/artifacts
+**/cache
+**/out
+
+# Logs
+**/logs
+**/*.log
+
+# IDE / OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
