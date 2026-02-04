@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWeb3 } from '../context/Web3Context';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Badge } from '../components/ui/Badge';
+import { UserCircle, Shield, Building, Printer, CheckCircle2 } from 'lucide-react';
 
 const CompleteProfile = () => {
   const navigate = useNavigate();
@@ -38,101 +43,104 @@ const CompleteProfile = () => {
     }
   };
 
+  const getRoleIcon = (role) => {
+    switch (role) {
+      case 'teacher': return <UserCircle className="w-5 h-5 text-blue-400" />;
+      case 'authority': return <Shield className="w-5 h-5 text-amber-400" />;
+      case 'examCenter': return <Printer className="w-5 h-5 text-purple-400" />;
+      default: return <UserCircle className="w-5 h-5" />;
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="container-custom">
-        <div className="max-w-md mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8 animate-fade-in">
-            <h1 className="text-gradient mb-4">ZeroLeak</h1>
-            <p className="text-[hsl(var(--color-text-secondary))]">
-              Let's set up your profile
-            </p>
+    <div className="flex items-center justify-center min-h-[80vh] p-4">
+      <Card className="w-full max-w-md border-slate-800 bg-slate-900/80">
+        <CardHeader className="text-center pb-2">
+          <CardTitle className="text-2xl text-white">Identity Setup</CardTitle>
+          <CardDescription>
+            Complete your profile to access the secure system
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="pt-6">
+          <div className="mb-6 p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-center justify-between">
+            <span className="text-xs text-slate-500 uppercase">Linked Wallet</span>
+            <span className="font-mono text-xs text-slate-300">
+              {account?.slice(0, 10)}...{account?.slice(-8)}
+            </span>
           </div>
 
-          {/* Profile Form Card */}
-          <div className="glass-card p-8 animate-slide-up">
-            {/* Connected Wallet */}
-            <div className="mb-6 p-4 bg-[hsl(var(--color-bg-tertiary))] rounded-lg">
-              <p className="text-sm text-[hsl(var(--color-text-muted))] mb-1">Connected Wallet</p>
-              <p className="font-mono text-sm text-[hsl(var(--color-text-primary))]">
-                {account?.slice(0, 10)}...{account?.slice(-8)}
-              </p>
+          {error && (
+            <div className="mb-6 p-4 bg-red-900/20 border border-red-900/30 rounded-lg text-red-200 text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-sm font-medium text-slate-300">
+                Full Name
+              </label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Enter your official name"
+                required
+              />
             </div>
 
-            {error && (
-              <div className="mb-6 p-4 bg-[hsl(var(--color-danger))]/20 border border-[hsl(var(--color-danger))]/30 rounded-lg">
-                <p className="text-[hsl(var(--color-danger))] text-sm">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Name Input */}
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter your full name"
-                  className="input"
-                  required
-                />
-              </div>
-
-              {/* Role Selection */}
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium mb-2">
-                  Your Role
-                </label>
+            <div className="space-y-2">
+              <label htmlFor="role" className="text-sm font-medium text-slate-300">
+                System Role
+              </label>
+              <div className="relative">
                 <select
                   id="role"
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className="input"
+                  className="w-full bg-slate-950 border border-slate-800 text-slate-100 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5"
                 >
                   <option value="teacher">Teacher / Paper Setter</option>
                   <option value="authority">Exam Authority</option>
                   <option value="examCenter">Exam Center</option>
                 </select>
-                <p className="mt-2 text-sm text-[hsl(var(--color-text-muted))]">
-                  {formData.role === 'teacher' && '📝 Upload and manage question papers'}
-                  {formData.role === 'authority' && '🏛️ Create exams and monitor the system'}
-                  {formData.role === 'examCenter' && '🖨️ Print papers at exam time'}
-                </p>
               </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full"
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Completing Profile...</span>
+              
+              <div className="mt-4 p-4 rounded-lg bg-slate-800/30 border border-slate-800">
+                <div className="flex items-start gap-3">
+                  {getRoleIcon(formData.role)}
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-200 mb-1 capitalize">
+                      {formData.role === 'examCenter' ? 'Exam Center' : formData.role}
+                    </h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {formData.role === 'teacher' && 'Access to paper upload, encryption tools, and secure submission channels.'}
+                      {formData.role === 'authority' && 'Oversight capabilities, audit logs access, and exam scheduling rights.'}
+                      {formData.role === 'examCenter' && 'Restricted access for secure paper decryption and printing during exam windows.'}
+                    </p>
                   </div>
-                ) : (
-                  'Complete Profile'
-                )}
-              </button>
-            </form>
-          </div>
+                </div>
+              </div>
+            </div>
 
-          {/* Info */}
-          <div className="mt-6 p-4 glass-card">
-            <p className="text-sm text-[hsl(var(--color-text-muted))] text-center">
-              💡 You can update your profile information later in settings
-            </p>
-          </div>
-        </div>
-      </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? 'Registering...' : (
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Confirm Identity
+                </span>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

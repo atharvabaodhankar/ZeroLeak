@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWeb3 } from '../context/Web3Context';
 import { useAuth } from '../context/AuthContext';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { ShieldAlert, Wallet, Lock, Activity } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -60,111 +64,115 @@ const Login = () => {
   const loading = web3Loading || authLoading;
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="container-custom">
-        <div className="max-w-md mx-auto">
-          {/* Logo/Title */}
-          <div className="text-center mb-8 animate-fade-in">
-            <h1 className="text-gradient mb-4">ZeroLeak</h1>
-            <p className="text-[hsl(var(--color-text-secondary))] text-lg">
-              Secure Exam Paper Management
-            </p>
+    <div className="flex flex-col items-center justify-center min-h-[80vh] w-full max-w-lg mx-auto p-4">
+      {/* Login Card */}
+      <Card className="w-full border-slate-800 bg-slate-900/60">
+        <CardHeader className="text-center space-y-4 pb-2">
+          <div className="mx-auto mb-4">
+            <img 
+              src="/logo.png" 
+              alt="ZeroLeak Secure Access" 
+              className="w-20 h-20 object-contain mx-auto drop-shadow-[0_0_20px_rgba(14,165,233,0.3)]"
+            />
           </div>
+          <CardTitle className="text-3xl font-bold tracking-tight text-white">
+            Access Control
+          </CardTitle>
+          <CardDescription className="text-slate-400 text-base">
+            Authenticate using your secure wallet identity
+          </CardDescription>
+        </CardHeader>
 
-          {/* Login Card */}
-          <div className="glass-card p-8 animate-slide-up">
-            <h2 className="text-2xl font-bold mb-6 text-center">Connect Your Wallet</h2>
+        <CardContent className="space-y-6 pt-6">
+          {error && (
+            <div className="p-4 bg-red-900/20 border border-red-900/50 rounded-lg flex items-start gap-3">
+              <ShieldAlert className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-200">{error}</p>
+            </div>
+          )}
 
-            {error && (
-              <div className="mb-6 p-4 bg-[hsl(var(--color-danger))]/20 border border-[hsl(var(--color-danger))]/30 rounded-lg">
-                <p className="text-[hsl(var(--color-danger))] text-sm">{error}</p>
-              </div>
-            )}
-
-            {!isConnected ? (
-              <button
-                onClick={handleConnectWallet}
-                disabled={loading}
-                className="btn-primary w-full flex items-center justify-center gap-3"
+          {!isConnected ? (
+            <div className="space-y-4">
+              <Button 
+                onClick={handleConnectWallet} 
+                disabled={loading} 
+                className="w-full py-6 text-lg"
+                size="lg"
               >
-                {loading ? (
+                {loading ? 'Connecting...' : (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Connecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-6 h-6" viewBox="0 0 40 40" fill="none">
-                      <path d="M32.5 8.75L24.375 2.5L16.25 8.75L8.125 2.5L0 8.75V31.25L8.125 37.5L16.25 31.25L24.375 37.5L32.5 31.25L40 37.5V15L32.5 8.75Z" fill="currentColor"/>
-                    </svg>
-                    <span>Connect MetaMask</span>
+                    <Wallet className="mr-2 h-5 w-5" />
+                    Connect MetaMask
                   </>
                 )}
-              </button>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-4 bg-[hsl(var(--color-bg-tertiary))] rounded-lg">
-                  <p className="text-sm text-[hsl(var(--color-text-muted))] mb-1">Connected Wallet</p>
-                  <p className="font-mono text-sm text-[hsl(var(--color-text-primary))]">
-                    {account?.slice(0, 6)}...{account?.slice(-4)}
-                  </p>
+              </Button>
+            </div>
+          ) : (
+             <div className="space-y-5">
+                <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-lg space-y-2">
+                  <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Verified Identity</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-mono text-emerald-400 font-medium">
+                      {account?.slice(0, 8)}...{account?.slice(-6)}
+                    </p>
+                    <Badge variant="outline" className="border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
+                      CONNECTED
+                    </Badge>
+                  </div>
                 </div>
 
-                {!isOnSepolia && (
-                  <div className="p-4 bg-[hsl(var(--color-warning))]/20 border border-[hsl(var(--color-warning))]/30 rounded-lg">
-                    <p className="text-[hsl(var(--color-warning))] text-sm mb-3">
-                      ⚠️ Please switch to Sepolia network
+                {!isOnSepolia ? (
+                  <div className="p-4 bg-amber-950/30 border border-amber-900/50 rounded-lg space-y-3">
+                    <p className="text-amber-200 text-sm flex items-center gap-2">
+                      <Activity className="h-4 w-4" />
+                      Network Mismatch
                     </p>
-                    <button
+                    <Button
                       onClick={switchToSepolia}
-                      className="btn-outline w-full text-sm"
+                      variant="outline"
+                      className="w-full border-amber-700 hover:bg-amber-950 text-amber-500"
                     >
                       Switch to Sepolia
-                    </button>
+                    </Button>
                   </div>
-                )}
-
-                {isOnSepolia && (
-                  <div className="flex items-center gap-2 text-[hsl(var(--color-success))]">
-                    <div className="w-2 h-2 rounded-full bg-[hsl(var(--color-success))] animate-glow"></div>
-                    <span className="text-sm">Connected to Sepolia</span>
+                ) : (
+                  <div className="flex items-center gap-2 justify-center text-emerald-500 py-2">
+                    <span className="relative flex h-2.5 w-2.5 mr-1">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-sm font-medium">Secure Connection Established</span>
                   </div>
                 )}
 
                 {loading && (
-                  <div className="text-center">
-                    <div className="inline-flex items-center gap-2 text-[hsl(var(--color-text-secondary))]">
-                      <div className="w-4 h-4 border-2 border-[hsl(var(--color-primary))] border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">Signing message...</span>
-                    </div>
-                  </div>
+                   <Button disabled className="w-full" variant="ghost">
+                     <span className="animate-pulse">Verifying Credentials...</span>
+                   </Button>
                 )}
               </div>
-            )}
-
-            <div className="mt-8 pt-6 border-t border-[rgba(255,255,255,0.1)]">
-              <p className="text-sm text-[hsl(var(--color-text-muted))] text-center">
-                🔒 Your wallet is your identity. No passwords needed.
-              </p>
-            </div>
+          )}
+        </CardContent>
+        
+        <CardFooter className="flex-col gap-4 border-t border-slate-800 pt-6">
+           <div className="text-center space-y-2">
+             <p className="text-xs text-slate-500">
+                Authorized Personnel Only. All actions are logged on-chain.
+             </p>
+           </div>
+           
+           <div className="text-center pt-2">
+            <a
+              href="https://metamask.io/download/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:text-primary/80 transition-colors"
+            >
+              Get MetaMask Wallet
+            </a>
           </div>
-
-          {/* Info */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-[hsl(var(--color-text-muted))]">
-              Don't have MetaMask?{' '}
-              <a
-                href="https://metamask.io/download/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[hsl(var(--color-primary))] hover:underline"
-              >
-                Install it here
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
