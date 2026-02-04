@@ -28,38 +28,8 @@ The blockchain acts as the ultimate gatekeeper.
 
 ## 🔄 System Workflow & Data Flow
 
-```mermaid
-sequenceDiagram
-    participant T as Teacher (Client)
-    participant B as Blockchain (Contract)
-    participant I as IPFS (Storage)
-    participant A as Authority
-    participant C as Exam Center
+![AES_K2_SSS_Paper_Pipeline](AES_K2_SSS_Paper_Pipeline.png)
 
-    Note over T: 1. Generate K1 (AES) & K2 (Master)
-    T->>T: 2. Encrypt PDF with K1
-    T->>I: 3. Upload Encrypted PDF Chunks
-    T->>T: 4. Encrypt K1 with K2
-    T->>T: 5. Split K2 into Shards (SSS)
-    T->>B: 6. Submit Chunks CIDs + Encrypted K1 + SSS Shards
-    T->>T: 7. PURGE K1 & K2 from Memory 🗑️
-    
-    Note over A: 8. Schedule Exam
-    A->>B: 9. Set unlockTimestamp & Assign Centers
-    
-    Note over C: 10. Wait for Exam Time...
-    C->>B: 11. Request Decryption Data (Paper ID)
-    B-->>C: 12. Permission Denied (If < unlockTimestamp)
-    
-    Note over B: 13. [TIME PASSES] Timestamp >= unlockTimestamp
-    
-    C->>B: 14. Request Decryption Data
-    B-->>C: 15. Return Encrypted K1 + SSS Shards
-    C->>C: 16. Reconstruct K2 from Shards
-    C->>C: 17. Decrypt K1 using K2
-    C->>I: 18. Fetch & Decrypt PDF Chunks
-    Note over C: 19. REVEAL PAPER 📄
-```
 
 ---
 
