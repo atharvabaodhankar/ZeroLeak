@@ -12,18 +12,18 @@ const LandingPage = () => {
   return (
     <div className="flex flex-col gap-20 pb-20">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex flex-col items-center justify-center text-center px-4 pt-20 overflow-hidden">
+      <section className="relative h-[calc(100vh-64px)] flex flex-col items-center justify-center text-center px-4 pt-10 overflow-hidden">
         {/* Animated Background Elements */}
         <div className="absolute inset-0 pointer-events-none">
             <motion.div 
                animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.1, 1] }} 
                transition={{ duration: 8, repeat: Infinity }}
-               className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px]" 
+               className="absolute top-1/4 left-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px]" 
             />
             <motion.div 
                animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.2, 1] }} 
                transition={{ duration: 10, repeat: Infinity, delay: 2 }}
-               className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px]" 
+               className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px]" 
             />
             {/* Horizontal Scan Line */}
             <motion.div 
@@ -37,19 +37,19 @@ const LandingPage = () => {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8 }}
-          className="mb-10 relative z-10 group"
+          className="mb-6 relative z-10 group"
         >
           {/* Logo Container with Float */}
           <motion.div
-            animate={{ y: [-10, 10, -10] }}
+            animate={{ y: [-5, 5, -5] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             className="relative"
           >
-             <div className="absolute inset-0 bg-blue-500/20 blur-[60px] rounded-full group-hover:bg-blue-500/30 transition-all duration-700" />
+             <div className="absolute inset-0 bg-blue-500/20 blur-[50px] rounded-full group-hover:bg-blue-500/30 transition-all duration-700" />
              <img 
                src="/logo.png" 
                alt="ZeroLeak" 
-               className="h-32 w-32 md:h-52 md:w-52 object-contain relative z-10 drop-shadow-[0_0_50px_rgba(14,165,233,0.5)]" 
+               className="h-24 w-24 md:h-40 md:w-40 object-contain relative z-10 drop-shadow-[0_0_40px_rgba(14,165,233,0.5)]" 
              />
              {/* Ring Animation */}
              <motion.div 
@@ -64,38 +64,38 @@ const LandingPage = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.8 }}
-          className="max-w-5xl space-y-8 relative z-10"
+          className="max-w-4xl space-y-5 relative z-10"
         >
           <motion.div 
             whileHover={{ scale: 1.05 }}
             className="inline-block"
           >
-            <Badge variant="security" className="mb-4 text-sm py-1.5 px-6 border-blue-500/30 bg-blue-500/10 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.2)] backdrop-blur-md">
+            <Badge variant="security" className="mb-2 text-[10px] py-1 px-3 border-blue-500/30 bg-blue-500/10 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.2)] backdrop-blur-md">
               <Shield className="w-3 h-3 mr-2 inline-block" /> INSTITUTIONAL GRADE SECURITY
             </Badge>
           </motion.div>
           
-          <h1 className="text-5xl md:text-8xl font-bold tracking-tight text-white leading-tight">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight">
             The <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 animate-gradient">Unbreakable</span> Standard <br />
             for Exam Security.
           </h1>
           
-          <p className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
             Zero Trust. Zero Leaks. Powered by <span className="text-slate-200 font-semibold">AES-256</span>, <span className="text-slate-200 font-semibold">Shamir's Secret Sharing</span>, and <span className="text-slate-200 font-semibold">Ethereum Timelocks</span>.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-10">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-5 pt-8">
             <Button 
               size="lg" 
-              className="text-lg px-12 py-7 bg-blue-600 hover:bg-blue-500 shadow-[0_0_40px_rgba(37,99,235,0.4)] hover:shadow-[0_0_60px_rgba(37,99,235,0.6)] transition-all duration-300 rounded-full group"
+              className="text-white text-base px-8 py-6 bg-blue-600 hover:bg-blue-500 shadow-[0_0_40px_rgba(37,99,235,0.4)] hover:shadow-[0_0_60px_rgba(37,99,235,0.6)] transition-all duration-300 rounded-full group"
               onClick={() => navigate('/login')}
             >
-              Launch Console <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              Launch Console <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Button>
             <Button 
                 size="lg" 
                 variant="outline" 
-                className="text-lg px-12 py-7 border-slate-700 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all rounded-full"
+                className="text-base px-8 py-6 border-slate-700 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all rounded-full"
                 onClick={() => document.getElementById('how-it-works').scrollIntoView({ behavior: 'smooth' })}
             >
                 View Architecture
