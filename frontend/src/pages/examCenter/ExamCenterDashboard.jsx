@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useWeb3 } from '../../context/Web3Context';
-import { reassemblePDF } from '../../utils/pdf/reassembler';
 import { combineShares } from '../../utils/shamirSecretSharing';
 import { decryptKeyWithMasterKey, decryptAES } from '../../utils/crypto';
 import { ethers } from 'ethers';
 import axios from 'axios';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Input } from '../../components/ui/Input';
+import { Lock, Unlock, Download, Clock, Printer, MapPin, Building2, Loader2 } from 'lucide-react';
 
 const ExamCenterDashboard = () => {
   const { contract, account } = useWeb3();
@@ -17,46 +21,34 @@ const ExamCenterDashboard = () => {
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
-  // Update current time every second for countdown
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Helper function to format time remaining
   const getTimeRemaining = (unlockTimestamp) => {
-    const unlockTime = unlockTimestamp.toNumber() * 1000;
+    const unlockTime = (unlockTimestamp.toNumber ? unlockTimestamp.toNumber() : Number(unlockTimestamp)) * 1000;
     const remaining = unlockTime - currentTime;
     
-    if (remaining <= 0) return 'Ready to unlock!';
+    if (remaining <= 0) return { text: 'UNLOCKED', isReady: true };
     
     const hours = Math.floor(remaining / (1000 * 60 * 60));
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
     
-    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s remaining`;
-    if (minutes > 0) return `${minutes}m ${seconds}s remaining`;
-    return `${seconds}s remaining`;
+    return { 
+        text: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
+        isReady: false 
+    };
   };
 
-  // Auto-check center registration on mount/account change
   useEffect(() => {
     const checkRegistration = async () => {
       if (!account || !contract) return;
 
       try {
         setKeyStatus('Checking registration...');
-        
-        // Check if center is registered
         const centerInfo = await contract.centers(account);
-        
-        console.log('🔍 Center registration check:', {
-          account,
-          isRegistered: centerInfo.isRegistered,
-          centerName: centerInfo.name
-        });
         
         if (!centerInfo.isRegistered) {
           setKeyStatus('');
@@ -66,7 +58,7 @@ const ExamCenterDashboard = () => {
         }
       } catch (error) {
         console.error("Error checking registration:", error);
-        setKeyStatus('Error checking registration. Please reload.');
+        setKeyStatus('Error checking registration.');
       }
     };
 
@@ -81,8 +73,6 @@ const ExamCenterDashboard = () => {
 
     try {
       setStatus('Registering center on blockchain...');
-      // In the time-locked system, we don't need RSA keys for centers
-      // Just register with a placeholder public key
       const placeholderKey = ethers.utils.toUtf8Bytes('time-locked-system');
       const tx = await contract.registerExamCenter(centerName, placeholderKey);
       await tx.wait();
@@ -101,11 +91,10 @@ const ExamCenterDashboard = () => {
       setLoading(true);
       const count = await contract.paperCount();
       const fetchedPapers = [];
+      const countNum = count.toNumber ? count.toNumber() : Number(count);
       
-      for (let i = 1; i <= count.toNumber(); i++) {
+      for (let i = 1; i <= countNum; i++) {
         const paper = await contract.getPaper(i);
-        
-        // Check if this center is assigned to this paper using new method
         const isAssigned = await contract.isAssignedToCenter(i, account);
         if (isAssigned && paper.isScheduled) {
           const myClassroom = await contract.getMyClassroom(i);
@@ -133,12 +122,10 @@ const ExamCenterDashboard = () => {
   const handleDownload = async (paper) => {
     try {
       setDownloadingId(paper.id);
-      setStatus('🔐 Fetching decryption shares from blockchain...');
+      setStatus('Fetching decryption shares from blockchain...');
       
-      // Get the encrypted K1 and master key shares from the contract
       const [encryptedK1Bytes, shareBytes, threshold] = await contract.getDecryptionShares(paper.id);
       
-      // Decode the data
       const encryptedK1BytesArray = ethers.utils.arrayify(encryptedK1Bytes);
       const encryptedK1 = new TextDecoder().decode(encryptedK1BytesArray);
       
@@ -147,70 +134,41 @@ const ExamCenterDashboard = () => {
         return new TextDecoder().decode(arr);
       });
       
-      console.log('🔍 Decryption data from blockchain:', {
-        paperId: paper.id,
-        encryptedK1Length: encryptedK1.length,
-        sharesCount: shares.length,
-        threshold,
-        unlockTimestamp: paper.unlockTimestamp.toNumber(),
-        currentTime: Math.floor(Date.now() / 1000)
-      });
-      
-      setStatus('🗂️ Reconstructing Master Key (K2) from Shamir shares...');
-      
-      // Combine shares to get the master key (K2)
-      // This will only work if we have enough shares
+      setStatus('Reconstructing Master Key (K2) from Shamir shares...');
       const masterKey = combineShares(shares);
       
-      setStatus('🔓 Decrypting Paper Key (K1) using Master Key...');
-      
-      // Decrypt K1 using K2
+      setStatus('Decrypting Paper Key (K1) using Master Key...');
       const aesKey = await decryptKeyWithMasterKey(encryptedK1, masterKey);
       
-      console.log('✅ Master key reconstruction and K1 decryption successful');
-      
-      setStatus('📦 Fetching and decrypting PDF chunks from IPFS...');
-      
-      // Now use the decrypted AES key (K1) to reassemble the PDF
+      setStatus('Fetching and decrypting PDF chunks from IPFS...');
       
       const decryptedChunks = [];
       for (let i = 0; i < paper.ipfsCIDs.length; i++) {
         const cid = paper.ipfsCIDs[i];
-        console.log(`📥 Fetching chunk ${i + 1}/${paper.ipfsCIDs.length}: ${cid}`);
         
-        // Try dedicated gateway first, then fallback
         let response;
         const dedicatedGateway = import.meta.env.VITE_GATEWAY_URL;
         const gatewayKey = import.meta.env.VITE_GATEWAY_KEY;
 
         try {
-          if (dedicatedGateway && gatewayKey) {
-            response = await axios.get(`https://${dedicatedGateway}/ipfs/${cid}?pinataGatewayToken=${gatewayKey}`, {
-              withCredentials: false
-            });
-          } else {
-            throw new Error('Dedicated gateway not configured');
-          }
-        } catch (gatewayError) {
-          try {
+            if (dedicatedGateway && gatewayKey) {
+                response = await axios.get(`https://${dedicatedGateway}/ipfs/${cid}?pinataGatewayToken=${gatewayKey}`, {
+                    withCredentials: false
+                });
+            } else {
+                throw new Error('No Gateway');
+            }
+        } catch (e) {
             response = await axios.get(`https://gateway.pinata.cloud/ipfs/${cid}`, {
-              withCredentials: false 
+                withCredentials: false
             });
-          } catch (pinataError) {
-            response = await axios.get(`https://ipfs.io/ipfs/${cid}`, {
-              withCredentials: false
-            });
-          }
         }
         
         const { iv, encryptedData } = response.data;
         const decryptedChunk = await decryptAES(encryptedData, iv, aesKey);
         decryptedChunks.push(decryptedChunk);
-        
-        setStatus(`📦 Decrypted chunk ${i + 1}/${paper.ipfsCIDs.length}...`);
       }
       
-      // Merge chunks
       const totalLength = decryptedChunks.reduce((acc, chunk) => acc + chunk.length, 0);
       const mergedArray = new Uint8Array(totalLength);
       let offset = 0;
@@ -220,12 +178,10 @@ const ExamCenterDashboard = () => {
       }
       
       const pdfBlob = new Blob([mergedArray], { type: 'application/pdf' });
-      
-      setStatus('✅ Success! Opening PDF...');
+      setStatus('Success! Opening PDF...');
       const url = URL.createObjectURL(pdfBlob);
       window.open(url);
       
-      // Auto-download as well
       const link = document.createElement('a');
       link.href = url;
       link.download = `${paper.examName}_${paper.subject}.pdf`;
@@ -234,22 +190,11 @@ const ExamCenterDashboard = () => {
       setTimeout(() => setStatus(''), 3000);
     } catch (error) {
       console.error('Download failed:', error);
-      
-      if (error.message.includes('Access denied') || error.message.includes('Time-lock active')) {
-        setStatus(`⏰ ${error.message}`);
-      } else if (error.message.includes('Not assigned')) {
-        setStatus('❌ You are not assigned to this paper.');
-      } else if (error.message.includes('not unlocked yet')) {
-        setStatus('❌ Paper has not been unlocked yet. Click \"Unlock Now\" first.');
-      } else {
-        setStatus(`❌ Download failed: ${error.message}`);
-      }
+      setStatus(`Error: ${error.message}`);
     } finally {
       setDownloadingId(null);
     }
   };
-
-
 
   const handleUnlock = async (paperId) => {
     try {
@@ -260,174 +205,141 @@ const ExamCenterDashboard = () => {
       fetchPapers();
       setTimeout(() => setStatus(''), 3000);
     } catch (error) {
-      console.error('Unlock failed:', error);
-      
-      // Handle specific error cases with user-friendly messages
-      let errorMessage = '';
-      if (error.reason === 'Too early to unlock' || error.message.includes('Too early to unlock')) {
-        const paper = papers.find(p => p.id === paperId);
-        const unlockTime = paper ? new Date(paper.unlockTimestamp.toNumber() * 1000).toLocaleString() : 'scheduled time';
-        errorMessage = `⏰ Cannot unlock yet! This paper can only be unlocked at: ${unlockTime}`;
-      } else if (error.reason === 'Paper not scheduled' || error.message.includes('not scheduled')) {
-        errorMessage = '❌ This paper has not been scheduled by the Authority yet.';
-      } else if (error.reason === 'Not authorized' || error.message.includes('not authorized')) {
-        errorMessage = '🚫 You are not authorized to unlock this paper.';
-      } else if (error.message.includes('user rejected')) {
-        errorMessage = '❌ Transaction was cancelled by user.';
-      } else {
-        errorMessage = `❌ Unlock failed: ${error.reason || error.message}`;
-      }
-      
+      let errorMessage = `Unlock failed: ${error.reason || error.message}`;
       setStatus(errorMessage);
-      setTimeout(() => setStatus(''), 5000); // Show error longer
+      setTimeout(() => setStatus(''), 5000);
     }
   };
 
   if (showNamePrompt) {
     return (
-      <div className="max-w-md mx-auto mt-20">
-        <div className="glass-card p-8">
-          <h2 className="text-2xl font-bold mb-4">Register Your Exam Center</h2>
-          <p className="text-[hsl(var(--color-text-secondary))] mb-6">
-            Please enter a name for your exam center. This will be visible to the Exam Authority.
-          </p>
-          <input
-            type="text"
-            value={centerName}
-            onChange={(e) => setCenterName(e.target.value)}
-            placeholder="e.g., City High School"
-            className="w-full px-4 py-2 bg-[hsl(var(--color-bg-secondary))] border border-[hsl(var(--color-border))] rounded-lg mb-4"
+      <Card className="max-w-md mx-auto mt-20 border-slate-700">
+        <CardHeader>
+          <CardTitle>Exam Center Registration</CardTitle>
+          <CardDescription>Register this node as an authorized exam center.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Input 
+            value={centerName} 
+            onChange={(e) => setCenterName(e.target.value)} 
+            placeholder="Official Center Name (e.g. City High School)" 
           />
-          <button onClick={handleRegisterCenter} className="btn-primary w-full">
-            Register Center
-          </button>
-        </div>
-      </div>
+          <Button onClick={handleRegisterCenter} className="w-full">
+            <Building2 className="w-4 h-4 mr-2" />
+            Register Node
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Key Generation Status / Error */}
-      {keyStatus && (
-         <div className="glass-card p-4 flex items-center justify-center gap-3 bg-blue-500/10 border-blue-500/20 text-blue-400">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-            {keyStatus}
-         </div>
-      )}
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-white tracking-tight">Exam Center Console</h2>
+          <p className="text-slate-400">Decrypt and print papers only during the authorized window.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchPapers} disabled={loading}>
+            Refresh
+        </Button>
+      </div>
 
       {status && (
-        <div className={`glass-card p-4 text-sm text-center animate-in slide-in-from-top-4 duration-300 ${
-          status.includes('❌') || status.includes('🚫') || status.includes('⏰') 
-            ? 'bg-red-500/10 border-red-500/20 text-red-400' 
-            : status.includes('✅') || status.includes('Success')
-            ? 'bg-green-500/10 border-green-500/20 text-green-400'
-            : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
-        }`}>
-          {status.includes('Unlocking') || status.includes('Registering') ? (
-            <div className="flex items-center justify-center gap-3">
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-              {status}
-            </div>
-          ) : (
-            status
-          )}
-        </div>
+         <Card className="bg-slate-900 border-slate-700 mb-6">
+            <CardContent className="p-4 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              <span className="text-slate-200">{status}</span>
+            </CardContent>
+         </Card>
       )}
 
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Assigned Papers</h2>
-        <div className="flex gap-2">
-          <button onClick={fetchPapers} disabled={loading} className="btn-outline text-xs py-1 px-3">
-            Refresh
-          </button>
-        </div>
-      </div>
+      {loading && papers.length === 0 ? (
+          <div className="text-center py-20 text-slate-500">Connecting to secure network...</div>
+      ) : papers.length === 0 ? (
+          <Card className="border-dashed border-slate-800 bg-transparent">
+             <CardContent className="py-20 text-center">
+                <Printer className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-400">No Assigned Exams</h3>
+                <p className="text-slate-600">You have not been assigned any papers for upcoming exams.</p>
+             </CardContent>
+          </Card>
+      ) : (
+          <div className="grid gap-6">
+             {papers.map(paper => {
+                const timeStatus = getTimeRemaining(paper.unlockTimestamp);
+                const isLocked = !paper.isUnlocked && !timeStatus.isReady;
+                
+                return (
+                  <Card key={paper.id} className={`border-l-4 ${paper.isUnlocked ? 'border-l-emerald-500' : 'border-l-amber-500'} bg-slate-900/40`}>
+                    <CardContent className="p-6">
+                       <div className="flex flex-col md:flex-row justify-between gap-6">
+                          <div className="space-y-2">
+                             <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="border-slate-700 text-slate-400">
+                                   ID: {paper.id}
+                                </Badge>
+                                {paper.isUnlocked ? (
+                                   <Badge variant="success" className="animate-pulse">DECRYPTION ACTIVE</Badge>
+                                ) : (
+                                   <Badge variant="warning">TIMELOCK ACTIVE</Badge>
+                                )}
+                             </div>
+                             <h3 className="text-2xl font-bold text-white">{paper.examName}</h3>
+                             <div className="flex items-center gap-4 text-sm text-slate-400">
+                                <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> Room: {paper.roomNumber}</span>
+                                <span className="flex items-center gap-1"><Building2 className="w-4 h-4" /> Subject: {paper.subject}</span>
+                             </div>
+                          </div>
 
-      <div className="glass-card overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center">
-            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p>Fetching scheduled papers...</p>
+                          <div className={`p-6 rounded-xl border min-w-[200px] text-center flex flex-col items-center justify-center ${
+                             paper.isUnlocked 
+                               ? 'bg-emerald-950/20 border-emerald-900' 
+                               : 'bg-black/40 border-slate-800'
+                          }`}>
+                              {paper.isUnlocked ? (
+                                 <>
+                                    <Unlock className="w-8 h-8 text-emerald-500 mb-2" />
+                                    <span className="text-emerald-400 font-bold tracking-widest">UNLOCKED</span>
+                                 </>
+                              ) : (
+                                 <>
+                                    <div className="font-mono text-3xl font-bold text-white tracking-widest mb-1 tabular-nums">
+                                       {timeStatus.text}
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold flex items-center gap-1">
+                                       <Clock className="w-3 h-3" /> Time Remaining
+                                    </span>
+                                 </>
+                              )}
+                          </div>
+                       </div>
+                       
+                       <div className="mt-6 flex justify-end gap-3 pt-6 border-t border-slate-800">
+                          {!paper.isUnlocked ? (
+                             <Button 
+                               onClick={() => handleUnlock(paper.id)}
+                               disabled={!timeStatus.isReady}
+                               className={timeStatus.isReady ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-slate-800 text-slate-500 border-slate-700'}
+                               variant={timeStatus.isReady ? 'default' : 'outline'}
+                             >
+                                {timeStatus.isReady ? <><Unlock className="w-4 h-4 mr-2" /> Unlock Paper</> : <><Lock className="w-4 h-4 mr-2" /> Locked</>}
+                             </Button>
+                          ) : (
+                             <Button onClick={() => handleDownload(paper)} disabled={downloadingId === paper.id} className="bg-emerald-600 hover:bg-emerald-700">
+                                {downloadingId === paper.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                                Decrypt & Print
+                             </Button>
+                          )}
+                       </div>
+                    </CardContent>
+                  </Card>
+                );
+             })}
           </div>
-        ) : papers.length === 0 ? (
-          <div className="p-12 text-center opacity-50">
-            <p>No papers have been assigned to your center yet.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-white/5">
-            {papers.map((paper) => (
-              <div key={paper.id} className="p-6 hover:bg-white/5 transition-colors">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h4 className="font-bold text-lg">{paper.examName}</h4>
-                    <p className="text-sm text-[hsl(var(--color-text-secondary))]">{paper.subject}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`badge-${paper.isUnlocked ? 'success' : 'primary'}`}>
-                      {paper.isUnlocked ? 'Unlocked' : 'Scheduled'}
-                    </span>
-                    <p className="text-[10px] mt-1 font-mono">{paper.roomNumber}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-[hsl(var(--color-text-muted))]">
-                    <div>Unlock Time: {new Date(paper.unlockTimestamp.toNumber() * 1000).toLocaleString()}</div>
-                    {!paper.isUnlocked && (
-                      <div className={`mt-1 font-mono ${
-                        paper.unlockTimestamp.toNumber() * 1000 <= currentTime 
-                          ? 'text-green-400 animate-pulse' 
-                          : 'text-yellow-400'
-                      }`}>
-                        {getTimeRemaining(paper.unlockTimestamp)}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    {!paper.isUnlocked ? (
-                      <button
-                        onClick={() => handleUnlock(paper.id)}
-                        disabled={paper.unlockTimestamp.toNumber() * 1000 > currentTime}
-                        className={`py-1.5 px-4 text-xs font-bold rounded transition-all ${
-                          paper.unlockTimestamp.toNumber() * 1000 <= currentTime
-                            ? 'btn-primary animate-pulse'
-                            : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'
-                        }`}
-                        title={paper.unlockTimestamp.toNumber() * 1000 > currentTime 
-                          ? `Cannot unlock until ${new Date(paper.unlockTimestamp.toNumber() * 1000).toLocaleString()}`
-                          : 'Click to unlock this paper'
-                        }
-                      >
-                        {paper.unlockTimestamp.toNumber() * 1000 <= currentTime ? '🔓 Unlock Now' : '⏰ Locked'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleDownload(paper)}
-                        disabled={downloadingId === paper.id}
-                        className="btn-primary py-1.5 px-4 text-xs font-bold flex items-center gap-2"
-                      >
-                        {downloadingId === paper.id ? (
-                          <>
-                            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Processing...
-                          </>
-                        ) : (
-                          '📄 Download & Decrypt'
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };
 
 export default ExamCenterDashboard;
-
