@@ -30,8 +30,6 @@ const AuthorityDashboard = () => {
           isUnlocked: paper.isUnlocked,
           unlockTimestamp: paper.unlockTimestamp,
           uploadTimestamp: paper.uploadTimestamp,
-          timeLockedKey: paper.timeLockedKey,
-          keyDerivationSalt: paper.keyDerivationSalt,
           ipfsCIDs: paper.ipfsCIDs
         });
       }
@@ -106,65 +104,30 @@ const AuthorityDashboard = () => {
 
   const handleSchedule = async (paperId, unlockTimestamp, centers, classrooms) => {
     try {
-      setTxStatus('Retrieving paper data...');
+      setTxStatus('Submitting schedule to blockchain...');
       
-      // Get the paper to extract the raw AES key
-      const paper = await contract.getPaper(paperId);
-      const tempTimeLockedKeyJson = ethers.utils.toUtf8String(paper.timeLockedKey);
-      
-      console.log('🔍 Authority scheduling - extracting raw AES key:', {
+      console.log('🔒 Authority scheduling paper:', {
         paperId,
-        tempTimeLockedKeyJson: tempTimeLockedKeyJson.substring(0, 100) + '...'
-      });
-      
-      // Parse the temporary time-locked key to get the raw AES key
-      let rawAESKey;
-      try {
-        const tempData = JSON.parse(tempTimeLockedKeyJson);
-        rawAESKey = tempData.rawAESKey;
-      } catch (parseError) {
-        console.error('Failed to parse temp time-locked key:', parseError);
-        throw new Error('Invalid paper format - cannot extract AES key');
-      }
-      
-      if (!rawAESKey) {
-        throw new Error('No raw AES key found in paper data');
-      }
-      
-      setTxStatus('Generating time-locked encryption...');
-      
-      // Generate new salt for this scheduling
-      const newSalt = Math.random().toString(36).substring(2, 15);
-      
-      // Create proper time-locked key with the Authority's chosen unlock timestamp
-      const { generateTimeLockedKey } = await import('../../utils/crypto');
-      const { timeLockedKey } = await generateTimeLockedKey(unlockTimestamp, newSalt, rawAESKey);
-      
-      console.log('🔒 Authority created time-locked key:', {
         unlockTimestamp,
-        newSalt,
-        timeLockedKeyLength: timeLockedKey.length
+        unlockTime: new Date(unlockTimestamp * 1000).toLocaleString(),
+        centers,
+        classrooms
       });
       
-      setTxStatus('Submitting to blockchain...');
-      
-      // Convert to bytes for blockchain storage
-      const timeLockedKeyBytes = ethers.utils.toUtf8Bytes(timeLockedKey);
-      
-      // Call the updated scheduleExam method with the new time-locked key
+      // Call the simplified scheduleExam method
+      // In the two-layer system, the teacher already provided the encrypted key 
+      // and shares during upload. Authority just sets the time.
       const tx = await contract.scheduleExam(
         paperId, 
         unlockTimestamp, 
         centers, 
-        classrooms,
-        timeLockedKeyBytes,
-        newSalt
+        classrooms
       );
       
-      setTxStatus('Waiting for blockchain confirmation...');
+      setTxStatus('⏳ Waiting for blockchain confirmation...');
       await tx.wait();
       
-      setTxStatus('Success! Exam scheduled with time-locked encryption.');
+      setTxStatus('✅ Success! Exam scheduled with Smart Contract Timelock.');
       setSelectedPaper(null);
       fetchAllPapers();
       
@@ -172,7 +135,7 @@ const AuthorityDashboard = () => {
       setTimeout(() => setTxStatus(''), 3000);
     } catch (error) {
       console.error('Scheduling failed:', error);
-      setTxStatus(`Error: ${error.reason || error.message}`);
+      setTxStatus(`❌ Error: ${error.reason || error.message}`);
     }
   };
 
