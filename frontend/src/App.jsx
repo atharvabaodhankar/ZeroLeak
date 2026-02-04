@@ -4,10 +4,11 @@ import { AuthProvider } from './context/AuthContext';
 import { useAutoLogin } from './hooks/useAutoLogin';
 import AutoLoginIndicator from './components/AutoLoginIndicator';
 import Login from './pages/Login';
+import LandingPage from './pages/LandingPage';
 import CompleteProfile from './pages/CompleteProfile';
 import Dashboard from './pages/Dashboard';
 import PrivateRoute from './components/PrivateRoute';
-import './App.css';
+import { AppShell } from './components/layout/AppShell';
 
 // AppContent component that uses the auto-login hook
 function AppContent() {
@@ -15,10 +16,11 @@ function AppContent() {
   const { isAutoLoggingIn } = useAutoLogin();
 
   return (
-    <>
+    <AppShell>
       <AutoLoginIndicator isAutoLoggingIn={isAutoLoggingIn} />
       <Routes>
         {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         
         {/* Protected Routes */}
@@ -39,10 +41,10 @@ function AppContent() {
           }
         />
 
-        {/* Default Route */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </AppShell>
   );
 }
 
