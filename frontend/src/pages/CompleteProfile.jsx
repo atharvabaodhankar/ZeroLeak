@@ -44,7 +44,7 @@ const CompleteProfile = () => {
         <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="text-center mb-8 animate-fade-in">
-            <h1 className="text-4xl font-bold mb-4">Welcome to ChainSeal! 👋</h1>
+            <h1 className="text-gradient mb-4">ZeroLeak</h1>
             <p className="text-[hsl(var(--color-text-secondary))]">
               Let's set up your profile
             </p>

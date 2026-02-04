@@ -12,7 +12,7 @@ export const useAuth = () => {
   return context;
 };
 
-const API_URL = 'http://localhost:5000/api/auth';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/auth';
 
 // Configure axios to send cookies
 axios.defaults.withCredentials = true;
