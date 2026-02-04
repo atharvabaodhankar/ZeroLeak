@@ -35,8 +35,9 @@ const base64ToArray = (base64) => {
  * @returns {string} Base64 encoded key
  */
 export const generateAESKey = () => {
+  const cryptoObj = window.crypto || window.msCrypto;
   const key = new Uint8Array(32); // 256-bit key
-  crypto.getRandomValues(key);
+  cryptoObj.getRandomValues(key);
   return arrayToBase64(key);
 };
 
@@ -47,7 +48,8 @@ export const generateAESKey = () => {
  * @returns {Object} { iv: string, encryptedData: string }
  */
 export const encryptAES = async (data, keyBase64) => {
-  const key = await crypto.subtle.importKey(
+  const cryptoObj = window.crypto || window.msCrypto;
+  const key = await cryptoObj.subtle.importKey(
     'raw',
     base64ToArray(keyBase64),
     { name: 'AES-GCM' },
@@ -56,9 +58,9 @@ export const encryptAES = async (data, keyBase64) => {
   );
 
   const iv = new Uint8Array(12); // 96-bit IV for GCM
-  crypto.getRandomValues(iv);
+  cryptoObj.getRandomValues(iv);
 
-  const encrypted = await crypto.subtle.encrypt(
+  const encrypted = await cryptoObj.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
     data
@@ -78,7 +80,8 @@ export const encryptAES = async (data, keyBase64) => {
  * @returns {Promise<Uint8Array>} Decrypted data
  */
 export const decryptAES = async (encryptedDataBase64, ivBase64, keyBase64) => {
-  const key = await crypto.subtle.importKey(
+  const cryptoObj = window.crypto || window.msCrypto;
+  const key = await cryptoObj.subtle.importKey(
     'raw',
     base64ToArray(keyBase64),
     { name: 'AES-GCM' },
@@ -89,7 +92,7 @@ export const decryptAES = async (encryptedDataBase64, ivBase64, keyBase64) => {
   const iv = base64ToArray(ivBase64);
   const encryptedData = base64ToArray(encryptedDataBase64);
 
-  const decrypted = await crypto.subtle.decrypt(
+  const decrypted = await cryptoObj.subtle.decrypt(
     { name: 'AES-GCM', iv },
     key,
     encryptedData
@@ -165,10 +168,11 @@ export const decryptWithPrivateKey = (encryptedDataBase64, privateKeyPem) => {
  * @returns {Promise<Object>} { publicKey, privateKey } in PEM format
  */
 export const generateDeterministicKeyPair = async (signature) => {
+  const cryptoObj = window.crypto || window.msCrypto;
   // Create a deterministic seed from the signature
   const encoder = new TextEncoder();
   const data = encoder.encode(signature);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   
   // Convert hash to hex seed
@@ -197,7 +201,7 @@ export const generateDeterministicKeyPair = async (signature) => {
     
     for (let i = 0; i < 32; i++) { // Generate 32 rounds of entropy
       const roundData = encoder.encode(currentHash + i.toString());
-      const roundHash = await crypto.subtle.digest('SHA-256', roundData);
+      const roundHash = await cryptoObj.subtle.digest('SHA-256', roundData);
       const roundArray = Array.from(new Uint8Array(roundHash));
       entropy.push(...roundArray);
       currentHash = roundArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -256,6 +260,7 @@ export const generateDeterministicKeyPair = async (signature) => {
  * @returns {Object} { timeLockedKey: string, actualAESKey: string }
  */
 export const generateTimeLockedKey = async (unlockTimestamp, salt, existingAESKey = null) => {
+  const cryptoObj = window.crypto || window.msCrypto;
   // Use existing key or generate a new one
   const actualAESKey = existingAESKey || generateAESKey();
   
@@ -263,7 +268,7 @@ export const generateTimeLockedKey = async (unlockTimestamp, salt, existingAESKe
   const timeData = `${unlockTimestamp}:${salt}`;
   const encoder = new TextEncoder();
   const data = encoder.encode(timeData);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const timeSeed = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   
@@ -305,6 +310,7 @@ export const generateTimeLockedKey = async (unlockTimestamp, salt, existingAESKe
  * @returns {Promise<string>} Decrypted AES key
  */
 export const decryptTimeLockedKey = async (timeLockedKeyJson, unlockTimestamp, salt) => {
+  const cryptoObj = window.crypto || window.msCrypto;
   const currentTime = Math.floor(Date.now() / 1000);
   
   console.log('🔓 Attempting to decrypt time-locked key:', {
@@ -326,7 +332,7 @@ export const decryptTimeLockedKey = async (timeLockedKeyJson, unlockTimestamp, s
     const timeData = `${unlockTimestamp}:${salt}`;
     const encoder = new TextEncoder();
     const data = encoder.encode(timeData);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const timeSeed = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     
@@ -407,5 +413,93 @@ export const decryptTimeLockedKey = async (timeLockedKeyJson, unlockTimestamp, s
       stack: error.stack?.substring(0, 200)
     });
     throw new Error(`Time-locked key decryption failed: ${error.message}`);
+  }
+};
+
+/**
+ * Generate a cryptographically secure random key (hex format for Shamir)
+ * @returns {string} Hex string with 0x prefix (256-bit)
+ */
+export const generateSecureRandomKey = () => {
+  const cryptoObj = window.crypto || window.msCrypto;
+  const key = new Uint8Array(32); // 256-bit key
+  cryptoObj.getRandomValues(key);
+  return '0x' + Array.from(key)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+};
+
+/**
+ * Encrypt an AES key with a master key (Layer 2 encryption)
+ * @param {string} aesKey - Base64 encoded AES key (K1)
+ * @param {string} masterKey - Hex string master key (K2)
+ * @returns {Promise<string>} JSON string of encrypted key
+ */
+export const encryptKeyWithMasterKey = async (aesKey, masterKey) => {
+  try {
+    // Convert hex master key to base64 for AES
+    const masterKeyHex = masterKey.startsWith('0x') ? masterKey.slice(2) : masterKey;
+    const masterKeyBytes = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      masterKeyBytes[i] = parseInt(masterKeyHex.substring(i * 2, i * 2 + 2), 16);
+    }
+    const masterKeyBase64 = arrayToBase64(masterKeyBytes);
+    
+    // Encrypt K1 with K2
+    const encrypted = await encryptAES(
+      new TextEncoder().encode(aesKey),
+      masterKeyBase64
+    );
+    
+    console.log('🔐 Encrypted K1 with K2:', {
+      k1Length: aesKey.length,
+      k2Length: masterKey.length,
+      encryptedLength: encrypted.encryptedData.length
+    });
+    
+    return JSON.stringify(encrypted);
+  } catch (error) {
+    console.error('❌ Failed to encrypt key with master key:', error);
+    throw new Error(`Key encryption failed: ${error.message}`);
+  }
+};
+
+/**
+ * Decrypt an AES key with a master key (Layer 2 decryption)
+ * @param {string} encryptedKeyJson - JSON string of encrypted key
+ * @param {string} masterKey - Hex string master key (K2)
+ * @returns {Promise<string>} Decrypted AES key (K1)
+ */
+export const decryptKeyWithMasterKey = async (encryptedKeyJson, masterKey) => {
+  try {
+    // Convert hex master key to base64 for AES
+    const masterKeyHex = masterKey.startsWith('0x') ? masterKey.slice(2) : masterKey;
+    const masterKeyBytes = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      masterKeyBytes[i] = parseInt(masterKeyHex.substring(i * 2, i * 2 + 2), 16);
+    }
+    const masterKeyBase64 = arrayToBase64(masterKeyBytes);
+    
+    // Parse encrypted key
+    const encrypted = JSON.parse(encryptedKeyJson);
+    
+    // Decrypt K1 using K2
+    const decryptedData = await decryptAES(
+      encrypted.encryptedData,
+      encrypted.iv,
+      masterKeyBase64
+    );
+    
+    const aesKey = new TextDecoder().decode(decryptedData);
+    
+    console.log('🔓 Decrypted K1 with K2:', {
+      k2Length: masterKey.length,
+      k1Length: aesKey.length
+    });
+    
+    return aesKey;
+  } catch (error) {
+    console.error('❌ Failed to decrypt key with master key:', error);
+    throw new Error(`Key decryption failed: ${error.message}`);
   }
 };
