@@ -11,9 +11,10 @@ dotenv.config({ path: '.env.local' });
 const app = express();
 
 // Middleware
+const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
 app.use(cors({
-  origin: 'http://localhost:5173', // Frontend URL
-  credentials: true // Allow cookies
+  origin: allowedOrigin, 
+  credentials: true 
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -28,7 +29,7 @@ const connectDB = async () => {
             throw new Error("MONGO_URI is missing in environment variables");
         }
         await mongoose.connect(MONGO_URI);
-        console.log("✅ MongoDB Connected: ChainSeal");
+        console.log("✅ MongoDB Connected: ZeroLeak");
     } catch (err) {
         console.error("❌ MongoDB Connection Error:", err.message);
         process.exit(1);
@@ -37,7 +38,7 @@ const connectDB = async () => {
 
 // Routes
 app.get('/', (req, res) => {
-    res.send('ChainSeal Backend is Running');
+    res.send('ZeroLeak Backend is Running');
 });
 
 // Mount auth routes
