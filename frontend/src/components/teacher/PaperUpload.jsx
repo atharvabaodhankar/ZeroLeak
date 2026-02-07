@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ProgressBar } from '../../components/ui/ProgressBar';
-import { Upload, FileText, Lock, ShieldCheck, Database, Trash2 } from 'lucide-react';
+import { Upload, FileText, Lock, ShieldCheck, Database, Trash2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const PaperUpload = ({ onUploadSuccess }) => {
